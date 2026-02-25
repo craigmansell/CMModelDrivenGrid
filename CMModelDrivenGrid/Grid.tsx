@@ -24,6 +24,7 @@ import { Text } from "@fluentui/react/lib/Text";
 import { TextField } from "@fluentui/react/lib/TextField";
 import { Checkbox } from "@fluentui/react/lib/Checkbox";
 import { Spinner, SpinnerSize } from "@fluentui/react/lib/Spinner";
+import { MessageBar, MessageBarType } from "@fluentui/react/lib/MessageBar";
 import { useTheme } from "@fluentui/react";
 
 type DataSet = ComponentFramework.PropertyHelper.DataSetApi.EntityRecord & IObjectWithKey;
@@ -983,29 +984,29 @@ export const Grid = React.memo((props: GridProps) => {
 					)}
 				</ScrollablePane>
 				{(itemsLoading || isComponentLoading) && <Overlay />}
-			</Stack.Item>
+			{saveStatus !== "idle" && (
+				<MessageBar
+					messageBarType={
+						saveStatus === "failed" ? MessageBarType.error :
+						saveStatus === "saved" ? MessageBarType.success :
+						MessageBarType.info
+					}
+					isMultiline={false}
+					styles={{ root: { position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 5 } }}
+				>
+					{saveStatus === "saving" ? (
+						<Stack horizontal verticalAlign="center" tokens={{ childrenGap: 6 }}>
+							<Spinner size={SpinnerSize.xSmall} />
+							<span>Saving...</span>
+						</Stack>
+					) : saveStatus === "saved" ? "Saved" : "Save failed"}
+				</MessageBar>
+			)}
+		</Stack.Item>
 			<Stack.Item>
 				<Stack horizontal style={{ width: "100%", paddingLeft: 8, paddingRight: 8 }}>
 					<Stack.Item align="center">
 						<Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
-							{saveStatus === "saving" && (
-								<Stack horizontal verticalAlign="center" tokens={{ childrenGap: 6 }}>
-									<Spinner size={SpinnerSize.xSmall} />
-									<Text variant="small">Saving...</Text>
-								</Stack>
-							)}
-							{saveStatus === "saved" && (
-								<Stack horizontal verticalAlign="center" tokens={{ childrenGap: 6 }}>
-									<Icon iconName="StatusCircleCheckmark" style={{ color: theme.palette.green }} />
-									<Text variant="small">Saved</Text>
-								</Stack>
-							)}
-							{saveStatus === "failed" && (
-								<Stack horizontal verticalAlign="center" tokens={{ childrenGap: 6 }}>
-									<Icon iconName="Warning" style={{ color: theme.palette.redDark }} />
-									<Text variant="small">Save failed</Text>
-								</Stack>
-							)}
 							<Text>
 								{stringFormat(
 									resources.getString("Label_Grid_Footer_RecordCount"),
