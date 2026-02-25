@@ -177,6 +177,9 @@ export const Grid = React.memo((props: GridProps) => {
 	const [filterByMode, setFilterByMode] = React.useState<FilterByMode>("equals");
 	const [filterByValue, setFilterByValue] = React.useState<string>("");
 	const [editingCell, setEditingCell] = React.useState<EditingCell | undefined>();
+	// Ref keeps commitEditCell stable so the TextField's onBlur never has a stale closure.
+	const editingCellRef = React.useRef<EditingCell | undefined>(undefined);
+	editingCellRef.current = editingCell;
 
 	const isInlineEditableDataType = React.useCallback((dataType: string): boolean => {
 		const normalizedType = dataType.toLowerCase();
@@ -260,24 +263,26 @@ export const Grid = React.memo((props: GridProps) => {
 	);
 
 	const commitEditCell = React.useCallback(async () => {
-		if (!editingCell) {
+		// Read from ref so this callback is stable and never carries a stale value
+		// even if the TextField's onBlur closure was captured before the last onChange.
+		const current = editingCellRef.current;
+		if (!current) {
 			return;
 		}
 
-		const pendingEdit = editingCell;
 		setEditingCell(undefined);
 
-		if (pendingEdit.value === pendingEdit.originalValue) {
+		if (current.value === current.originalValue) {
 			return;
 		}
 
 		setIsLoading(true);
 		try {
-			await onUpdateCell(pendingEdit.recordId, pendingEdit.columnName, pendingEdit.value, pendingEdit.dataType);
+			await onUpdateCell(current.recordId, current.columnName, current.value, current.dataType);
 		} catch {
 			setIsLoading(false);
 		}
-	}, [editingCell, onUpdateCell]);
+	}, [onUpdateCell]);
 
 	const items: DataSet[] = React.useMemo(() => {
 		setIsLoading(false);
@@ -295,6 +300,11 @@ export const Grid = React.memo((props: GridProps) => {
 
 		return Object.values(records).filter((record): record is DataSet => record !== undefined);
 	}, [records, sortedRecordIds, setIsLoading]);
+
+	// New array reference when editingCell changes so Fluent UI's List re-renders
+	// the affected row without requiring a full DetailsList remount.
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	const displayItems = React.useMemo(() => [...items], [items, editingCell?.recordId, editingCell?.columnName]);
 
 	const isFilterValueRequired = React.useCallback((mode: FilterByMode): boolean => {
 		return mode !== "containsData" && mode !== "doesNotContainData";
@@ -695,13 +705,13 @@ export const Grid = React.memo((props: GridProps) => {
 			if (canEditThisCell) {
 				return (
 					<span
-						onDoubleClick={(event) => {
+						onClick={(event) => {
 							event.preventDefault();
 							event.stopPropagation();
 							beginEditCell(item, column, effectiveDataType, formattedValue);
 						}}
-						style={{ cursor: "text" }}
-						title="Double-click to edit">
+						style={{ cursor: "text", display: "block", width: "100%", minHeight: "1em" }}
+						title="Click to edit">
 						{formattedValue}
 					</span>
 				);
@@ -757,12 +767,12 @@ export const Grid = React.memo((props: GridProps) => {
 				)}
 				<ScrollablePane style={{ height: "100%" }} scrollbarVisibility={ScrollbarVisibility.auto}>
 					<DetailsList
-						key={`details-${currentPage}-${editingCell?.recordId ?? "none"}-${editingCell?.columnName ?? "none"}`}
+						key={`details-${currentPage}`}
 						columns={gridColumns}
 						onRenderItemColumn={onRenderItemColumn}
 						onRenderDetailsHeader={onRenderDetailsHeader}
-						items={items}
-						setKey={`set${currentPage}-${editingCell?.recordId ?? "none"}-${editingCell?.columnName ?? "none"}`} // Refreshes rows when paging or entering/leaving inline edit
+						items={displayItems}
+						setKey={`set${currentPage}`}
 						initialFocusedIndex={0}
 						checkButtonAriaLabel="select row"
 						layoutMode={DetailsListLayoutMode.fixedColumns}
