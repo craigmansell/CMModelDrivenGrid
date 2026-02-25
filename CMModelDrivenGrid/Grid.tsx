@@ -23,6 +23,7 @@ import { Icon } from "@fluentui/react/lib/Icon";
 import { Text } from "@fluentui/react/lib/Text";
 import { TextField } from "@fluentui/react/lib/TextField";
 import { Checkbox } from "@fluentui/react/lib/Checkbox";
+import { Spinner, SpinnerSize } from "@fluentui/react/lib/Spinner";
 import { useTheme } from "@fluentui/react";
 
 type DataSet = ComponentFramework.PropertyHelper.DataSetApi.EntityRecord & IObjectWithKey;
@@ -101,6 +102,56 @@ export interface GridProps {
 	item?: DataSet;
 }
 
+// Self-contained editing input — manages its own value state so typing always
+// works regardless of whether DetailsList re-renders the parent row.
+interface EditingTextFieldProps {
+	initialValue: string;
+	onCommit: (value: string) => void;
+	onCancel: () => void;
+}
+
+const EditingTextField: React.FC<EditingTextFieldProps> = ({ initialValue, onCommit, onCancel }) => {
+	const [value, setValue] = React.useState(initialValue);
+	const valueRef = React.useRef(initialValue);
+	// Guard against double-commit (blur fires after Enter/Escape unmounts the input).
+	const committedRef = React.useRef(false);
+
+	const handleChange = (_ev: React.FormEvent, newValue?: string) => {
+		const v = newValue ?? "";
+		setValue(v);
+		valueRef.current = v;
+	};
+
+	const handleCommit = () => {
+		if (committedRef.current) return;
+		committedRef.current = true;
+		onCommit(valueRef.current);
+	};
+
+	const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+		if (event.key === "Enter") {
+			event.preventDefault();
+			handleCommit();
+		} else if (event.key === "Escape") {
+			event.preventDefault();
+			committedRef.current = true; // prevent blur from committing
+			onCancel();
+		}
+	};
+
+	return (
+		<TextField
+			value={value}
+			autoFocus
+			borderless
+			styles={{ root: { width: "100%" }, fieldGroup: { minHeight: 24 } }}
+			onChange={handleChange}
+			onBlur={handleCommit}
+			onKeyDown={handleKeyDown}
+		/>
+	);
+};
+
 const onRenderDetailsHeader: IRenderFunction<IDetailsHeaderProps> = (props, defaultRender) => {
 	if (props && defaultRender) {
 		return (
@@ -168,6 +219,7 @@ export const Grid = React.memo((props: GridProps) => {
 	});
 
 	const [isComponentLoading, setIsLoading] = React.useState<boolean>(false);
+	const [isSaving, setIsSaving] = React.useState<boolean>(false);
 	const [filterColumn, setFilterColumn] = React.useState<IColumn | undefined>();
 	const [filterTarget, setFilterTarget] = React.useState<HTMLElement | undefined>();
 	const [allFilterValues, setAllFilterValues] = React.useState<string[]>([]);
@@ -262,9 +314,7 @@ export const Grid = React.memo((props: GridProps) => {
 		[]
 	);
 
-	const commitEditCell = React.useCallback(async () => {
-		// Read from ref so this callback is stable and never carries a stale value
-		// even if the TextField's onBlur closure was captured before the last onChange.
+	const commitEditCell = React.useCallback(async (finalValue: string) => {
 		const current = editingCellRef.current;
 		if (!current) {
 			return;
@@ -272,15 +322,15 @@ export const Grid = React.memo((props: GridProps) => {
 
 		setEditingCell(undefined);
 
-		if (current.value === current.originalValue) {
+		if (finalValue === current.originalValue) {
 			return;
 		}
 
-		setIsLoading(true);
+		setIsSaving(true);
 		try {
-			await onUpdateCell(current.recordId, current.columnName, current.value, current.dataType);
-		} catch {
-			setIsLoading(false);
+			await onUpdateCell(current.recordId, current.columnName, finalValue, current.dataType);
+		} finally {
+			setIsSaving(false);
 		}
 	}, [onUpdateCell]);
 
@@ -663,27 +713,11 @@ export const Grid = React.memo((props: GridProps) => {
 
 			if (isEditingThisCell && editingCell) {
 				return (
-					<TextField
-						value={editingCell.value}
-						autoFocus
-						borderless
-						styles={{ root: { width: "100%" }, fieldGroup: { minHeight: 24 } }}
-						onChange={(_event, newValue) =>
-							setEditingCell((current) =>
-								current ? { ...current, value: newValue ?? "" } : current
-							)
-						}
-						onBlur={() => {
-							void commitEditCell();
-						}}
-						onKeyDown={(event) => {
-							if (event.key === "Enter") {
-								event.preventDefault();
-								void commitEditCell();
-							} else if (event.key === "Escape") {
-								setEditingCell(undefined);
-							}
-						}}
+					<EditingTextField
+						key={`${editingCell.recordId}-${editingCell.columnName}`}
+						initialValue={editingCell.value}
+						onCommit={(finalValue) => void commitEditCell(finalValue)}
+						onCancel={() => setEditingCell(undefined)}
 					/>
 				);
 			}
@@ -938,7 +972,14 @@ export const Grid = React.memo((props: GridProps) => {
 						)}
 					</Stack.Item>
 					<Stack.Item grow align="center" style={{ textAlign: "center" }}>
-						{!isFullScreen && <Link onClick={onFullScreen}>{resources.getString("Label_ShowFullScreen")}</Link>}
+						{isSaving ? (
+							<Stack horizontal verticalAlign="center" horizontalAlign="center" tokens={{ childrenGap: 6 }}>
+								<Spinner size={SpinnerSize.xSmall} />
+								<Text variant="small">Saving...</Text>
+							</Stack>
+						) : (
+							!isFullScreen && <Link onClick={onFullScreen}>{resources.getString("Label_ShowFullScreen")}</Link>
+						)}
 					</Stack.Item>
 					<IconButton
 						alt="First Page"
