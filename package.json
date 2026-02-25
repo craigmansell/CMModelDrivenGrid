@@ -12,7 +12,7 @@
 		"start:watch": "pcf-scripts start watch",
 		"refreshTypes": "pcf-scripts refreshTypes",
 		"push:dev": "pac pcf push --environment https://capricorndevelopment.crm4.dynamics.com/ --publisher-prefix cm --incremental",
-		"dev:loop": "npm run build && npm run push:dev"
+		"dev:loop": "node version-bump.js && npm run build && npm run push:dev"
 	},
 	"dependencies": {
 		"@fluentui/react": "^8.121.3",

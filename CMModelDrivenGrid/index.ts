@@ -208,6 +208,15 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		const dataset = context.parameters.records;
 		const paging = context.parameters.records.paging;
 
+		console.log("[CMModelDrivenGrid] updateView", {
+			loading: dataset.loading,
+			columnCount: dataset.columns?.length,
+			columns: dataset.columns?.map(c => ({ name: c.name, displayName: c.displayName, isHidden: c.isHidden, order: c.order })),
+			recordCount: Object.keys(dataset.records ?? {}).length,
+			sortedRecordIds: dataset.sortedRecordIds,
+			updatedProperties: context.updatedProperties,
+		});
+
 		// In MDAs, the initial population of the dataset does not provide updatedProperties.
 		// Ensure we always hydrate local record caches at least once.
 		const initialLoad = this.records === undefined;
