@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="CraigMansell" constructor="CMModelDrivenGrid" version="1.0.23" display-name-key="CMModelDrivenGrid" description-key="CMModelDrivenGrid" control-type="standard">
+  <control namespace="CraigMansell" constructor="CMModelDrivenGrid" version="1.0.24" display-name-key="CMModelDrivenGrid" description-key="CMModelDrivenGrid" control-type="standard">
 
     <!--external-service-usage node declares whether this 3rd party PCF control is using external service or not, if yes, this control will be considered as premium and please also add the external domain it is using.
     If it is not using any external service, please set the enabled="false" and DO NOT add any domain below. The "enabled" will be false by default.
@@ -24,6 +24,8 @@
 
     <property name="HighlightValue" display-name-key="HighlightValue_Disp" description-key="HighlightValue_Desc" of-type="SingleLine.Text" usage="input" required="false" default-value=""/>
     <property name="HighlightColor" display-name-key="HighlightColor_Disp" description-key="HighlightColor_Desc" of-type="SingleLine.Text" usage="input" required="false" default-value=""/>
+    <property name="EnableLookupLinks" display-name-key="EnableLookupLinks_Disp" description-key="EnableLookupLinks_Desc" of-type="TwoOptions" usage="input" required="false" default-value="true"/>
+    <property name="EnableInlineEdit" display-name-key="EnableInlineEdit_Disp" description-key="EnableInlineEdit_Desc" of-type="TwoOptions" usage="input" required="false" default-value="true"/>
     <property name="SubGridHeight" display-name-key="SubGridHeight_Disp" description-key="SubGridHeight_Desc" of-type="Whole.None" usage="input" required="false"/>
 
     <resources>

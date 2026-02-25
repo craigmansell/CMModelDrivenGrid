@@ -13,7 +13,6 @@ import {
 } from "@fluentui/react/lib/DetailsList";
 import { Sticky, StickyPositionType } from "@fluentui/react/lib/Sticky";
 import { Callout, DirectionalHint } from "@fluentui/react/lib/Callout";
-import { IContextualMenuProps } from "@fluentui/react/lib/ContextualMenu";
 import { ScrollablePane, ScrollbarVisibility } from "@fluentui/react/lib/ScrollablePane";
 import { Stack } from "@fluentui/react/lib/Stack";
 import { Overlay } from "@fluentui/react/lib/Overlay";
@@ -27,6 +26,25 @@ import { Checkbox } from "@fluentui/react/lib/Checkbox";
 import { useTheme } from "@fluentui/react";
 
 type DataSet = ComponentFramework.PropertyHelper.DataSetApi.EntityRecord & IObjectWithKey;
+interface EditingCell {
+	recordId: string;
+	columnName: string;
+	dataType: string;
+	value: string;
+	originalValue: string;
+}
+
+type FilterByMode =
+	| "equals"
+	| "notEquals"
+	| "containsData"
+	| "doesNotContainData"
+	| "contains"
+	| "notContains"
+	| "beginsWith"
+	| "notBeginsWith"
+	| "endsWith"
+	| "notEndsWith";
 
 function stringFormat(template: string, ...args: string[]): string {
 	args?.forEach((arg, index) => {
@@ -51,17 +69,33 @@ export interface GridProps {
 	itemsLoading: boolean;
 	highlightValue: string | null;
 	highlightColor: string | null;
+	enableLookupLinks: boolean;
+	enableInlineEdit: boolean;
 	setSelectedRecords: (ids: string[]) => void;
 	onNavigate: (item?: ComponentFramework.PropertyHelper.DataSetApi.EntityRecord) => void;
+	onOpenLookup: (entityType: string, id: string) => void;
 	onSort: (name: string, direction: "asc" | "desc" | "none") => void;
 	onFilter: (
 		name: string,
-		mode: "contains" | "equals" | "notEquals" | "beginsWith" | "endsWith" | "in" | "clear",
+		mode:
+			| "contains"
+			| "notContains"
+			| "equals"
+			| "notEquals"
+			| "beginsWith"
+			| "notBeginsWith"
+			| "endsWith"
+			| "notEndsWith"
+			| "containsData"
+			| "doesNotContainData"
+			| "in"
+			| "clear",
 		value?: string | string[]
 	) => void;
 	loadFirstPage: () => void;
 	loadNextPage: () => void;
 	loadPreviousPage: () => void;
+	onUpdateCell: (recordId: string, columnName: string, value: string, dataType: string) => Promise<void> | void;
 	onFullScreen: () => void;
 	isFullScreen: boolean;
 	item?: DataSet;
@@ -78,17 +112,6 @@ const onRenderDetailsHeader: IRenderFunction<IDetailsHeaderProps> = (props, defa
 		);
 	}
 	return null;
-};
-
-const onRenderItemColumn = (
-	item?: ComponentFramework.PropertyHelper.DataSetApi.EntityRecord,
-	index?: number,
-	column?: IColumn
-) => {
-	if (column?.fieldName && item) {
-		return <>{item?.getFormattedValue(column.fieldName)}</>;
-	}
-	return <></>;
 };
 
 export const Grid = React.memo((props: GridProps) => {
@@ -116,7 +139,11 @@ export const Grid = React.memo((props: GridProps) => {
 		isFullScreen,
 		highlightValue,
 		highlightColor,
+		enableLookupLinks,
+		enableInlineEdit,
 		totalResultCount,
+		onOpenLookup,
+		onUpdateCell,
 	} = props;
 	const theme = useTheme();
 	const blankValueLabel = "(Blanks)";
@@ -146,6 +173,111 @@ export const Grid = React.memo((props: GridProps) => {
 	const [allFilterValues, setAllFilterValues] = React.useState<string[]>([]);
 	const [checkedFilterValues, setCheckedFilterValues] = React.useState<string[]>([]);
 	const [searchText, setSearchText] = React.useState<string>("");
+	const [filterByTarget, setFilterByTarget] = React.useState<HTMLElement | undefined>();
+	const [filterByMode, setFilterByMode] = React.useState<FilterByMode>("equals");
+	const [filterByValue, setFilterByValue] = React.useState<string>("");
+	const [editingCell, setEditingCell] = React.useState<EditingCell | undefined>();
+
+	const isInlineEditableDataType = React.useCallback((dataType: string): boolean => {
+		const normalizedType = dataType.toLowerCase();
+		const unsupportedMarkers = [
+			"lookup",
+			"customer",
+			"owner",
+			"partylist",
+			"regarding",
+			"dateandtime",
+			"datetime",
+			"optionset",
+			"twooptions",
+			"multiselect",
+			"image",
+			"file",
+		];
+		return !unsupportedMarkers.some((marker) => normalizedType.includes(marker));
+	}, []);
+
+	const getLookupReference = React.useCallback(
+		(
+			item: ComponentFramework.PropertyHelper.DataSetApi.EntityRecord,
+			fieldName: string
+		): { entityType: string; id: string } | null => {
+			try {
+				const rawValue = item.getValue(fieldName);
+				const candidate = Array.isArray(rawValue) ? rawValue[0] : rawValue;
+				if (!candidate || typeof candidate !== "object") {
+					return null;
+				}
+
+				if ("entityType" in candidate && "id" in candidate) {
+					const lookupCandidate = candidate as { entityType?: unknown; id?: unknown };
+					const entityType = typeof lookupCandidate.entityType === "string" ? lookupCandidate.entityType : "";
+					const id = typeof lookupCandidate.id === "string" ? lookupCandidate.id : "";
+					return entityType && id ? { entityType, id } : null;
+				}
+
+				if ("etn" in candidate && "id" in candidate) {
+					const entityReferenceCandidate = candidate as { etn?: unknown; id?: { guid?: unknown } };
+					const entityType = typeof entityReferenceCandidate.etn === "string" ? entityReferenceCandidate.etn : "";
+					const id = typeof entityReferenceCandidate.id?.guid === "string" ? entityReferenceCandidate.id.guid : "";
+					return entityType && id ? { entityType, id } : null;
+				}
+
+				return null;
+			} catch {
+				return null;
+			}
+		},
+		[]
+	);
+
+	const beginEditCell = React.useCallback(
+		(
+			item: ComponentFramework.PropertyHelper.DataSetApi.EntityRecord,
+			column: IColumn,
+			dataType: string,
+			formattedValue: string
+		) => {
+			const initialRawValue = item.getValue(column.key);
+			let initialValue = formattedValue;
+			if (typeof initialRawValue === "string") {
+				initialValue = initialRawValue;
+			} else if (typeof initialRawValue === "number" || typeof initialRawValue === "boolean") {
+				initialValue = initialRawValue.toString();
+			} else if (initialRawValue instanceof Date) {
+				initialValue = initialRawValue.toISOString();
+			}
+
+			setEditingCell({
+				recordId: item.getRecordId(),
+				columnName: column.key,
+				dataType: dataType,
+				value: initialValue,
+				originalValue: initialValue,
+			});
+		},
+		[]
+	);
+
+	const commitEditCell = React.useCallback(async () => {
+		if (!editingCell) {
+			return;
+		}
+
+		const pendingEdit = editingCell;
+		setEditingCell(undefined);
+
+		if (pendingEdit.value === pendingEdit.originalValue) {
+			return;
+		}
+
+		setIsLoading(true);
+		try {
+			await onUpdateCell(pendingEdit.recordId, pendingEdit.columnName, pendingEdit.value, pendingEdit.dataType);
+		} catch {
+			setIsLoading(false);
+		}
+	}, [editingCell, onUpdateCell]);
 
 	const items: DataSet[] = React.useMemo(() => {
 		setIsLoading(false);
@@ -164,12 +296,73 @@ export const Grid = React.memo((props: GridProps) => {
 		return Object.values(records).filter((record): record is DataSet => record !== undefined);
 	}, [records, sortedRecordIds, setIsLoading]);
 
+	const isFilterValueRequired = React.useCallback((mode: FilterByMode): boolean => {
+		return mode !== "containsData" && mode !== "doesNotContainData";
+	}, []);
+
+	const deriveFilterByState = React.useCallback(
+		(
+			condition?: ComponentFramework.PropertyHelper.DataSetApi.ConditionExpression
+		): { mode: FilterByMode; value: string } => {
+			if (!condition) {
+				return { mode: "equals", value: "" };
+			}
+
+			const conditionValue = typeof condition.value === "string" ? condition.value : "";
+			const parseLikeValue = (value: string): "contains" | "beginsWith" | "endsWith" => {
+				if (value.startsWith("%") && value.endsWith("%") && value.length >= 2) {
+					return "contains";
+				}
+				if (value.endsWith("%")) {
+					return "beginsWith";
+				}
+				if (value.startsWith("%")) {
+					return "endsWith";
+				}
+				return "contains";
+			};
+			const stripLikeWildcards = (value: string): string => value.replace(/^%/, "").replace(/%$/, "");
+
+			const operator = condition.conditionOperator as number;
+			switch (operator) {
+				case 0:
+					return { mode: "equals", value: conditionValue };
+				case 1:
+					return { mode: "notEquals", value: conditionValue };
+				case 6: {
+					const parsedMode = parseLikeValue(conditionValue);
+					return { mode: parsedMode, value: stripLikeWildcards(conditionValue) };
+				}
+				case 7: {
+					const parsedMode = parseLikeValue(conditionValue);
+					const negativeMode: FilterByMode =
+						parsedMode === "contains"
+							? "notContains"
+							: parsedMode === "beginsWith"
+								? "notBeginsWith"
+								: "notEndsWith";
+					return { mode: negativeMode, value: stripLikeWildcards(conditionValue) };
+				}
+				case 12:
+					return { mode: "doesNotContainData", value: "" };
+				case 13:
+					return { mode: "containsData", value: "" };
+				default:
+					return { mode: "equals", value: "" };
+			}
+		},
+		[]
+	);
+
 	const onFilterDismiss = React.useCallback(() => {
 		setFilterColumn(undefined);
 		setFilterTarget(undefined);
+		setFilterByTarget(undefined);
 		setAllFilterValues([]);
 		setCheckedFilterValues([]);
 		setSearchText("");
+		setFilterByMode("equals");
+		setFilterByValue("");
 	}, []);
 
 	const openFilterCallout = React.useCallback(
@@ -186,6 +379,7 @@ export const Grid = React.memo((props: GridProps) => {
 			).sort((left, right) => left.localeCompare(right));
 
 			const existingCondition = filtering?.conditions?.find((condition) => condition.attributeName === column.key);
+			const filterByState = deriveFilterByState(existingCondition);
 			let initialCheckedValues = [...uniqueValues];
 
 			if (existingCondition?.conditionOperator === 8 && Array.isArray(existingCondition.value)) {
@@ -208,32 +402,49 @@ export const Grid = React.memo((props: GridProps) => {
 			setAllFilterValues(uniqueValues);
 			setCheckedFilterValues(initialCheckedValues.filter((value) => uniqueValues.includes(value)));
 			setSearchText("");
+			setFilterByMode(filterByState.mode);
+			setFilterByValue(filterByState.value);
 		},
-		[blankValueLabel, filtering?.conditions, items]
+		[blankValueLabel, deriveFilterByState, filtering?.conditions, items]
 	);
 
-	const promptTextFilter = React.useCallback(
-		(mode: "contains" | "equals" | "notEquals" | "beginsWith" | "endsWith", label: string) => {
-			if (!filterColumn) {
-				return;
-			}
+	const openFilterByPopup = React.useCallback((target: HTMLElement) => {
+		setFilterByTarget(target);
+	}, []);
 
-			const input = window.prompt(`${label} filter for '${filterColumn.name}'. Leave empty to clear filter:`, "");
-			if (input === null) {
-				return;
-			}
+	const closeFilterByPopup = React.useCallback(() => {
+		setFilterByTarget(undefined);
+	}, []);
 
-			if (input.trim().length === 0) {
-				onFilter(filterColumn.key, "clear");
-			} else {
-				onFilter(filterColumn.key, mode, input.trim());
-			}
+	const applyFilterBy = React.useCallback(() => {
+		if (!filterColumn) {
+			return;
+		}
 
-			setIsLoading(true);
-			onFilterDismiss();
-		},
-		[filterColumn, onFilter, onFilterDismiss]
-	);
+		const trimmedValue = filterByValue.trim();
+		if (isFilterValueRequired(filterByMode) && trimmedValue.length === 0) {
+			return;
+		}
+
+		if (isFilterValueRequired(filterByMode)) {
+			onFilter(filterColumn.key, filterByMode, trimmedValue);
+		} else {
+			onFilter(filterColumn.key, filterByMode);
+		}
+
+		setIsLoading(true);
+		onFilterDismiss();
+	}, [filterByMode, filterByValue, filterColumn, isFilterValueRequired, onFilter, onFilterDismiss]);
+
+	const clearFilterBy = React.useCallback(() => {
+		if (!filterColumn) {
+			return;
+		}
+
+		onFilter(filterColumn.key, "clear");
+		setIsLoading(true);
+		onFilterDismiss();
+	}, [filterColumn, onFilter, onFilterDismiss]);
 
 	const filteredValueOptions = React.useMemo(() => {
 		if (!searchText.trim()) {
@@ -245,29 +456,6 @@ export const Grid = React.memo((props: GridProps) => {
 	}, [allFilterValues, searchText]);
 
 	const allVisibleSelected = filteredValueOptions.every((value) => checkedFilterValues.includes(value));
-
-	const textFiltersMenuProps = React.useMemo<IContextualMenuProps>(
-		() => ({
-			items: [
-				{ key: "equals", text: "Equals...", onClick: () => promptTextFilter("equals", "Equals") },
-				{
-					key: "notEquals",
-					text: "Does Not Equal...",
-					onClick: () => promptTextFilter("notEquals", "Does Not Equal"),
-				},
-				{
-					key: "beginsWith",
-					text: "Begins With...",
-					onClick: () => promptTextFilter("beginsWith", "Begins With"),
-				},
-				{ key: "endsWith", text: "Ends With...", onClick: () => promptTextFilter("endsWith", "Ends With") },
-				{ key: "contains", text: "Contains...", onClick: () => promptTextFilter("contains", "Contains") },
-			],
-			directionalHint: DirectionalHint.rightTopEdge,
-			isBeakVisible: false,
-		}),
-		[promptTextFilter]
-	);
 
 	const menuRowStyles = React.useMemo(
 		() => ({
@@ -311,6 +499,22 @@ export const Grid = React.memo((props: GridProps) => {
 				fontSize: 12,
 			},
 		}),
+		[]
+	);
+
+	const filterByOptions = React.useMemo(
+		() => [
+			{ key: "equals", text: "Equals" },
+			{ key: "notEquals", text: "Does not equal" },
+			{ key: "containsData", text: "Contains data" },
+			{ key: "doesNotContainData", text: "Does not contain data" },
+			{ key: "contains", text: "Contains" },
+			{ key: "notContains", text: "Does not contain" },
+			{ key: "beginsWith", text: "Begins with" },
+			{ key: "notBeginsWith", text: "Does not begin with" },
+			{ key: "endsWith", text: "Ends with" },
+			{ key: "notEndsWith", text: "Does not end with" },
+		] as { key: FilterByMode; text: string }[],
 		[]
 	);
 
@@ -380,8 +584,8 @@ export const Grid = React.memo((props: GridProps) => {
 
 	const gridColumns = React.useMemo(() => {
 		return columns
-			.filter((col) => !col.isHidden && col.order >= 0)
-			.sort((a, b) => a.order - b.order)
+			.filter((col) => !col.isHidden && (typeof col.order !== "number" || col.order >= 0))
+			.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 			.map((col) => {
 				const sortOn = sorting?.find((s) => s.name === col.name);
 				const filtered = filtering?.conditions?.find((f) => f.attributeName == col.name);
@@ -407,6 +611,117 @@ export const Grid = React.memo((props: GridProps) => {
 			width: typeof width === "number" && Number.isFinite(width) && width > 0 ? width : "100%",
 		};
 	}, [width, height]);
+
+	const onRenderItemColumn = React.useCallback(
+		(item?: ComponentFramework.PropertyHelper.DataSetApi.EntityRecord, _index?: number, column?: IColumn) => {
+			if (!column?.fieldName || !item) {
+				return <></>;
+			}
+
+			const formattedValue = item.getFormattedValue(column.fieldName);
+			const columnMetadata = column.data as ComponentFramework.PropertyHelper.DataSetApi.Column | undefined;
+			let rawCellValue: unknown;
+			try {
+				rawCellValue = item.getValue(column.fieldName);
+			} catch {
+				rawCellValue = undefined;
+			}
+			const dataType = columnMetadata?.dataType ?? "";
+			const effectiveDataType =
+				dataType ||
+				(typeof rawCellValue === "number"
+					? "decimal"
+					: typeof rawCellValue === "string"
+						? "singleline.text"
+						: typeof rawCellValue === "boolean"
+							? "twooptions"
+							: "");
+			const recordId = item.getRecordId();
+			const isEditingThisCell =
+				editingCell?.recordId === recordId && editingCell?.columnName === column.fieldName;
+			const isPrimitiveRawValue =
+				rawCellValue === null ||
+				rawCellValue === undefined ||
+				typeof rawCellValue === "string" ||
+				typeof rawCellValue === "number" ||
+				typeof rawCellValue === "boolean";
+			const canEditThisCell =
+				enableInlineEdit &&
+				(isPrimitiveRawValue || (!!effectiveDataType && isInlineEditableDataType(effectiveDataType))) &&
+				!itemsLoading &&
+				!isComponentLoading;
+
+			if (isEditingThisCell && editingCell) {
+				return (
+					<TextField
+						value={editingCell.value}
+						autoFocus
+						borderless
+						styles={{ root: { width: "100%" }, fieldGroup: { minHeight: 24 } }}
+						onChange={(_event, newValue) =>
+							setEditingCell((current) =>
+								current ? { ...current, value: newValue ?? "" } : current
+							)
+						}
+						onBlur={() => {
+							void commitEditCell();
+						}}
+						onKeyDown={(event) => {
+							if (event.key === "Enter") {
+								event.preventDefault();
+								void commitEditCell();
+							} else if (event.key === "Escape") {
+								setEditingCell(undefined);
+							}
+						}}
+					/>
+				);
+			}
+
+			const lookupReference = enableLookupLinks ? getLookupReference(item, column.fieldName) : null;
+			if (lookupReference && formattedValue) {
+				return (
+					<Link
+						onClick={(event) => {
+							event?.preventDefault();
+							event?.stopPropagation();
+							onOpenLookup(lookupReference.entityType, lookupReference.id);
+						}}>
+						{formattedValue}
+					</Link>
+				);
+			}
+
+			if (canEditThisCell) {
+				return (
+					<span
+						onDoubleClick={(event) => {
+							event.preventDefault();
+							event.stopPropagation();
+							beginEditCell(item, column, effectiveDataType, formattedValue);
+						}}
+						style={{ cursor: "text" }}
+						title="Double-click to edit">
+						{formattedValue}
+					</span>
+				);
+			}
+
+			return <>{formattedValue}</>;
+		},
+		[
+			beginEditCell,
+			commitEditCell,
+			editingCell,
+			enableInlineEdit,
+			enableLookupLinks,
+			getLookupReference,
+			isComponentLoading,
+			isInlineEditableDataType,
+			itemsLoading,
+			onOpenLookup,
+		]
+	);
 
 	const onRenderRow: IDetailsListProps["onRenderRow"] = (props) => {
 		const customStyles: Partial<IDetailsRowStyles> = {};
@@ -442,17 +757,19 @@ export const Grid = React.memo((props: GridProps) => {
 				)}
 				<ScrollablePane style={{ height: "100%" }} scrollbarVisibility={ScrollbarVisibility.auto}>
 					<DetailsList
+						key={`details-${currentPage}-${editingCell?.recordId ?? "none"}-${editingCell?.columnName ?? "none"}`}
 						columns={gridColumns}
 						onRenderItemColumn={onRenderItemColumn}
 						onRenderDetailsHeader={onRenderDetailsHeader}
 						items={items}
-						setKey={`set${currentPage}`} // Ensures that the selection is reset when paging
+						setKey={`set${currentPage}-${editingCell?.recordId ?? "none"}-${editingCell?.columnName ?? "none"}`} // Refreshes rows when paging or entering/leaving inline edit
 						initialFocusedIndex={0}
 						checkButtonAriaLabel="select row"
 						layoutMode={DetailsListLayoutMode.fixedColumns}
 						constrainMode={ConstrainMode.unconstrained}
+						useReducedRowRenderer={false}
 						selection={selection}
-						onItemInvoked={onNavigate}
+						onItemInvoked={enableInlineEdit ? undefined : onNavigate}
 						onRenderRow={onRenderRow}></DetailsList>
 					{filterTarget && filterColumn && (
 						<Callout
@@ -497,9 +814,14 @@ export const Grid = React.memo((props: GridProps) => {
 							<div style={{ height: 1, background: theme.palette.neutralLight, margin: "2px 0" }} />
 								<ActionButton
 									styles={menuRowStyles}
-									text="Text Filters"
+									text="Filter by"
+									iconProps={{ iconName: "Filter" }}
 									menuIconProps={{ iconName: "ChevronRight" }}
-									menuProps={textFiltersMenuProps}
+									onClick={(event) => {
+										if (event?.currentTarget) {
+											openFilterByPopup(event.currentTarget as HTMLElement);
+										}
+									}}
 								/>
 							<div style={{ height: 1, background: theme.palette.neutralLight, margin: "2px 0" }} />
 								<TextField
@@ -550,6 +872,45 @@ export const Grid = React.memo((props: GridProps) => {
 								<Stack horizontal horizontalAlign="end" tokens={{ childrenGap: 6 }} style={{ marginTop: 2 }}>
 									<PrimaryButton text="OK" onClick={onApplyValueFilter} disabled={checkedFilterValues.length === 0} />
 									<DefaultButton text="Cancel" onClick={onFilterDismiss} />
+								</Stack>
+							</Stack>
+						</Callout>
+					)}
+					{filterByTarget && filterColumn && (
+						<Callout
+							target={filterByTarget}
+							onDismiss={closeFilterByPopup}
+							directionalHint={DirectionalHint.rightTopEdge}
+							gapSpace={8}
+							setInitialFocus>
+							<Stack tokens={{ childrenGap: 10 }} style={{ width: 280, padding: 12 }}>
+								<Stack horizontal horizontalAlign="space-between" verticalAlign="center">
+									<Text variant="mediumPlus">Filter by</Text>
+									<IconButton iconProps={{ iconName: "Cancel" }} onClick={closeFilterByPopup} />
+								</Stack>
+								<select
+									value={filterByMode}
+									onChange={(event) => setFilterByMode(event.currentTarget.value as FilterByMode)}
+									style={{ width: "100%", minHeight: 32 }}>
+									{filterByOptions.map((option) => (
+										<option key={option.key} value={option.key}>
+											{option.text}
+										</option>
+									))}
+								</select>
+								{isFilterValueRequired(filterByMode) && (
+									<TextField
+										value={filterByValue}
+										onChange={(_event, newValue) => setFilterByValue(newValue ?? "")}
+									/>
+								)}
+								<Stack horizontal horizontalAlign="end" tokens={{ childrenGap: 8 }}>
+									<PrimaryButton
+										text="Apply"
+										onClick={applyFilterBy}
+										disabled={isFilterValueRequired(filterByMode) && filterByValue.trim().length === 0}
+									/>
+									<DefaultButton text="Clear" onClick={clearFilterBy} />
 								</Stack>
 							</Stack>
 						</Callout>

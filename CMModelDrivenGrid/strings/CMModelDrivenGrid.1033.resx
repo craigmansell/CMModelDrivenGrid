@@ -145,6 +145,22 @@
     <value>The color to highlight a row using</value>
     <comment/>
   </data>
+  <data name="EnableLookupLinks_Disp" xml:space="preserve">
+    <value>Enable Lookup Hyperlinks</value>
+    <comment/>
+  </data>
+  <data name="EnableLookupLinks_Desc" xml:space="preserve">
+    <value>When enabled, lookup column values render as links that open the related record.</value>
+    <comment/>
+  </data>
+  <data name="EnableInlineEdit_Disp" xml:space="preserve">
+    <value>Enable Inline Editing</value>
+    <comment/>
+  </data>
+  <data name="EnableInlineEdit_Desc" xml:space="preserve">
+    <value>When enabled, double-click editable cells to update values directly in the grid.</value>
+    <comment/>
+  </data>
   <data name="HighlightIndicator_Disp" xml:space="preserve">
     <value>Hightlight Indicator Field</value>
     <comment/>

@@ -28,6 +28,70 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		}
 	};
 
+	private normalizeGuid = (id: string): string => id.replace(/[{}]/g, "");
+
+	private parseInlineEditValue = (value: string, dataType: string): string | number | null => {
+		const trimmedValue = value.trim();
+		if (trimmedValue.length === 0) {
+			return null;
+		}
+
+		const normalizedType = dataType.toLowerCase();
+		if (normalizedType.includes("whole.") || normalizedType.includes("optionset")) {
+			const parsedInteger = Number.parseInt(trimmedValue, 10);
+			if (Number.isNaN(parsedInteger)) {
+				throw new Error("Please enter a whole number.");
+			}
+			return parsedInteger;
+		}
+
+		if (
+			normalizedType.includes("decimal") ||
+			normalizedType.includes("currency") ||
+			normalizedType.includes("fp")
+		) {
+			const parsedDecimal = Number.parseFloat(trimmedValue);
+			if (Number.isNaN(parsedDecimal)) {
+				throw new Error("Please enter a numeric value.");
+			}
+			return parsedDecimal;
+		}
+
+		return trimmedValue;
+	};
+
+	onOpenLookup = (entityType: string, id: string): void => {
+		if (!entityType || !id) {
+			return;
+		}
+
+		void this.context.navigation.openForm({
+			entityName: entityType,
+			entityId: this.normalizeGuid(id),
+		});
+	};
+
+	onUpdateCell = async (recordId: string, columnName: string, value: string, dataType: string): Promise<void> => {
+		try {
+			const entityType = this.context.parameters.records.getTargetEntityType();
+			if (!entityType) {
+				throw new Error("Unable to determine target table for inline editing.");
+			}
+
+			const parsedValue = this.parseInlineEditValue(value, dataType);
+			const updateData: ComponentFramework.WebApi.Entity = {
+				[columnName]: parsedValue,
+			};
+
+			await this.context.webAPI.updateRecord(entityType, this.normalizeGuid(recordId), updateData);
+			this.context.parameters.records.refresh();
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Unable to save the field value.";
+			await this.context.navigation.openAlertDialog({ text: message });
+			throw error;
+		}
+	};
+
 	onSort = (name: string, direction: "asc" | "desc" | "none"): void => {
 		const sorting = this.context.parameters.records.sorting;
 		while (sorting.length > 0) {
@@ -46,7 +110,19 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 
 	onFilter = (
 		name: string,
-		mode: "contains" | "equals" | "notEquals" | "beginsWith" | "endsWith" | "in" | "clear",
+		mode:
+			| "contains"
+			| "notContains"
+			| "equals"
+			| "notEquals"
+			| "beginsWith"
+			| "notBeginsWith"
+			| "endsWith"
+			| "notEndsWith"
+			| "containsData"
+			| "doesNotContainData"
+			| "in"
+			| "clear",
 		value?: string | string[]
 	): void => {
 		const filtering = this.context.parameters.records.filtering;
@@ -62,6 +138,21 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 					conditions: nextConditions,
 				});
 			}
+			this.context.parameters.records.refresh();
+			return;
+		}
+
+		if (mode === "containsData" || mode === "doesNotContainData") {
+			nextConditions.push({
+				attributeName: name,
+				conditionOperator: (mode === "containsData" ? 13 : 12) as ComponentFramework.PropertyHelper.DataSetApi.Types.ConditionOperator,
+				value: "",
+			});
+
+			filtering.setFilter({
+				filterOperator: 0,
+				conditions: nextConditions,
+			});
 			this.context.parameters.records.refresh();
 			return;
 		}
@@ -113,7 +204,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 				return;
 			}
 
-			let conditionOperator: ComponentFramework.PropertyHelper.DataSetApi.Types.ConditionOperator = 0;
+			let conditionOperator = 0;
 			let mappedValue: string = filterValue;
 
 			switch (mode) {
@@ -121,12 +212,24 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 					conditionOperator = 6;
 					mappedValue = `%${filterValue}%`;
 					break;
+				case "notContains":
+					conditionOperator = 7;
+					mappedValue = `%${filterValue}%`;
+					break;
 				case "beginsWith":
 					conditionOperator = 6;
 					mappedValue = `${filterValue}%`;
 					break;
+				case "notBeginsWith":
+					conditionOperator = 7;
+					mappedValue = `${filterValue}%`;
+					break;
 				case "endsWith":
 					conditionOperator = 6;
+					mappedValue = `%${filterValue}`;
+					break;
+				case "notEndsWith":
+					conditionOperator = 7;
 					mappedValue = `%${filterValue}`;
 					break;
 				case "notEquals":
@@ -142,7 +245,8 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 
 			nextConditions.push({
 				attributeName: name,
-				conditionOperator: conditionOperator,
+				conditionOperator:
+					conditionOperator as ComponentFramework.PropertyHelper.DataSetApi.Types.ConditionOperator,
 				value: mappedValue,
 			});
 		}
@@ -208,15 +312,6 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		const dataset = context.parameters.records;
 		const paging = context.parameters.records.paging;
 
-		console.log("[CMModelDrivenGrid] updateView", {
-			loading: dataset.loading,
-			columnCount: dataset.columns?.length,
-			columns: dataset.columns?.map(c => ({ name: c.name, displayName: c.displayName, isHidden: c.isHidden, order: c.order })),
-			recordCount: Object.keys(dataset.records ?? {}).length,
-			sortedRecordIds: dataset.sortedRecordIds,
-			updatedProperties: context.updatedProperties,
-		});
-
 		// In MDAs, the initial population of the dataset does not provide updatedProperties.
 		// Ensure we always hydrate local record caches at least once.
 		const initialLoad = this.records === undefined;
@@ -240,15 +335,21 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		this.records = dataset.records ?? {};
 		this.sortedRecordsIds = dataset.sortedRecordIds ?? [];
 
-		const rawAllocatedWidth = Number(context.mode.allocatedWidth as unknown);
-		const rawAllocatedHeight = Number(context.mode.allocatedHeight as unknown);
-		const allocatedWidth = Number.isFinite(rawAllocatedWidth) && rawAllocatedWidth > 0 ? rawAllocatedWidth : -1;
-		let allocatedHeight =
-			Number.isFinite(rawAllocatedHeight) && rawAllocatedHeight > 0 ? rawAllocatedHeight : -1;
+		const rawAllocatedWidth = context.mode.allocatedWidth as unknown as string;
+		const rawAllocatedHeight = context.mode.allocatedHeight as unknown as string;
+		let allocatedWidth = parseInt(rawAllocatedWidth, 10);
+		let allocatedHeight = parseInt(rawAllocatedHeight, 10);
+
+		if (!Number.isFinite(allocatedWidth) || allocatedWidth <= 0) {
+			allocatedWidth = -1;
+		}
 
 		// For MDA subgrid support when running on mobile/narrow formfactor
 		if (!this.isFullScreen && context.parameters.SubGridHeight.raw) {
 			allocatedHeight = context.parameters.SubGridHeight.raw;
+		}
+		if (!Number.isFinite(allocatedHeight) || allocatedHeight <= 0) {
+			allocatedHeight = 420;
 		}
 
 		ReactDOM.render(
@@ -268,13 +369,17 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 				itemsLoading: dataset.loading,
 				highlightValue: this.context.parameters.HighlightValue.raw,
 				highlightColor: this.context.parameters.HighlightColor.raw,
+				enableLookupLinks: this.context.parameters.EnableLookupLinks.raw ?? true,
+				enableInlineEdit: true,
 				setSelectedRecords: this.setSelectedRecords,
 				onNavigate: this.onNavigate,
+				onOpenLookup: this.onOpenLookup,
 				onSort: this.onSort,
 				onFilter: this.onFilter,
 				loadFirstPage: this.loadFirstPage,
 				loadNextPage: this.loadNextPage,
 				loadPreviousPage: this.loadPreviousPage,
+				onUpdateCell: this.onUpdateCell,
 				isFullScreen: this.isFullScreen,
 				onFullScreen: this.onFullScreen,
 			}),
