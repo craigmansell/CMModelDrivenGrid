@@ -705,13 +705,13 @@ export const Grid = React.memo((props: GridProps) => {
 			if (canEditThisCell) {
 				return (
 					<span
-						onClick={(event) => {
+						onDoubleClick={(event) => {
 							event.preventDefault();
 							event.stopPropagation();
 							beginEditCell(item, column, effectiveDataType, formattedValue);
 						}}
 						style={{ cursor: "text", display: "block", width: "100%", minHeight: "1em" }}
-						title="Click to edit">
+						title="Double-click to edit">
 						{formattedValue}
 					</span>
 				);
