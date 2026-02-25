@@ -47,6 +47,8 @@ type FilterByMode =
 	| "endsWith"
 	| "notEndsWith";
 
+type SaveStatus = "idle" | "saving" | "saved" | "failed";
+
 function stringFormat(template: string, ...args: string[]): string {
 	args?.forEach((arg, index) => {
 		template = template.replace("{" + index + "}", arg);
@@ -219,7 +221,8 @@ export const Grid = React.memo((props: GridProps) => {
 	});
 
 	const [isComponentLoading, setIsLoading] = React.useState<boolean>(false);
-	const [isSaving, setIsSaving] = React.useState<boolean>(false);
+	const [saveStatus, setSaveStatus] = React.useState<SaveStatus>("idle");
+	const saveStatusTimeoutRef = React.useRef<number | undefined>(undefined);
 	const [filterColumn, setFilterColumn] = React.useState<IColumn | undefined>();
 	const [filterTarget, setFilterTarget] = React.useState<HTMLElement | undefined>();
 	const [allFilterValues, setAllFilterValues] = React.useState<string[]>([]);
@@ -233,6 +236,25 @@ export const Grid = React.memo((props: GridProps) => {
 	const editingCellRef = React.useRef<EditingCell | undefined>(undefined);
 	editingCellRef.current = editingCell;
 
+	React.useEffect(() => {
+		return () => {
+			if (saveStatusTimeoutRef.current !== undefined) {
+				window.clearTimeout(saveStatusTimeoutRef.current);
+			}
+		};
+	}, []);
+
+	const setTransientSaveStatus = React.useCallback((status: "saved" | "failed", timeoutMs: number) => {
+		if (saveStatusTimeoutRef.current !== undefined) {
+			window.clearTimeout(saveStatusTimeoutRef.current);
+		}
+		setSaveStatus(status);
+		saveStatusTimeoutRef.current = window.setTimeout(() => {
+			setSaveStatus("idle");
+			saveStatusTimeoutRef.current = undefined;
+		}, timeoutMs);
+	}, []);
+
 	const isInlineEditableDataType = React.useCallback((dataType: string): boolean => {
 		const normalizedType = dataType.toLowerCase();
 		const unsupportedMarkers = [
@@ -241,11 +263,6 @@ export const Grid = React.memo((props: GridProps) => {
 			"owner",
 			"partylist",
 			"regarding",
-			"dateandtime",
-			"datetime",
-			"optionset",
-			"twooptions",
-			"multiselect",
 			"image",
 			"file",
 		];
@@ -326,13 +343,18 @@ export const Grid = React.memo((props: GridProps) => {
 			return;
 		}
 
-		setIsSaving(true);
+		if (saveStatusTimeoutRef.current !== undefined) {
+			window.clearTimeout(saveStatusTimeoutRef.current);
+			saveStatusTimeoutRef.current = undefined;
+		}
+		setSaveStatus("saving");
 		try {
 			await onUpdateCell(current.recordId, current.columnName, finalValue, current.dataType);
-		} finally {
-			setIsSaving(false);
+			setTransientSaveStatus("saved", 2000);
+		} catch {
+			setTransientSaveStatus("failed", 4000);
 		}
-	}, [onUpdateCell]);
+	}, [onUpdateCell, setTransientSaveStatus]);
 
 	const items: DataSet[] = React.useMemo(() => {
 		setIsLoading(false);
@@ -965,21 +987,36 @@ export const Grid = React.memo((props: GridProps) => {
 			<Stack.Item>
 				<Stack horizontal style={{ width: "100%", paddingLeft: 8, paddingRight: 8 }}>
 					<Stack.Item align="center">
-						{stringFormat(
-							resources.getString("Label_Grid_Footer_RecordCount"),
-							totalResultCount === -1 ? "5000+" : totalResultCount.toString(),
-							selection.getSelectedCount().toString()
-						)}
+						<Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
+							{saveStatus === "saving" && (
+								<Stack horizontal verticalAlign="center" tokens={{ childrenGap: 6 }}>
+									<Spinner size={SpinnerSize.xSmall} />
+									<Text variant="small">Saving...</Text>
+								</Stack>
+							)}
+							{saveStatus === "saved" && (
+								<Stack horizontal verticalAlign="center" tokens={{ childrenGap: 6 }}>
+									<Icon iconName="StatusCircleCheckmark" style={{ color: theme.palette.green }} />
+									<Text variant="small">Saved</Text>
+								</Stack>
+							)}
+							{saveStatus === "failed" && (
+								<Stack horizontal verticalAlign="center" tokens={{ childrenGap: 6 }}>
+									<Icon iconName="Warning" style={{ color: theme.palette.redDark }} />
+									<Text variant="small">Save failed</Text>
+								</Stack>
+							)}
+							<Text>
+								{stringFormat(
+									resources.getString("Label_Grid_Footer_RecordCount"),
+									totalResultCount === -1 ? "5000+" : totalResultCount.toString(),
+									selection.getSelectedCount().toString()
+								)}
+							</Text>
+						</Stack>
 					</Stack.Item>
 					<Stack.Item grow align="center" style={{ textAlign: "center" }}>
-						{isSaving ? (
-							<Stack horizontal verticalAlign="center" horizontalAlign="center" tokens={{ childrenGap: 6 }}>
-								<Spinner size={SpinnerSize.xSmall} />
-								<Text variant="small">Saving...</Text>
-							</Stack>
-						) : (
-							!isFullScreen && <Link onClick={onFullScreen}>{resources.getString("Label_ShowFullScreen")}</Link>
-						)}
+						{!isFullScreen && <Link onClick={onFullScreen}>{resources.getString("Label_ShowFullScreen")}</Link>}
 					</Stack.Item>
 					<IconButton
 						alt="First Page"

@@ -30,13 +30,32 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 
 	private normalizeGuid = (id: string): string => id.replace(/[{}]/g, "");
 
-	private parseInlineEditValue = (value: string, dataType: string): string | number | null => {
+	private parseInlineEditValue = (value: string, dataType: string): string | number | boolean | null => {
 		const trimmedValue = value.trim();
 		if (trimmedValue.length === 0) {
 			return null;
 		}
 
 		const normalizedType = dataType.toLowerCase();
+		if (normalizedType.includes("twooptions") || normalizedType.includes("boolean")) {
+			const loweredValue = trimmedValue.toLowerCase();
+			if (loweredValue === "true" || loweredValue === "yes" || loweredValue === "1") {
+				return true;
+			}
+			if (loweredValue === "false" || loweredValue === "no" || loweredValue === "0") {
+				return false;
+			}
+			throw new Error("Please enter true/false, yes/no, or 1/0.");
+		}
+
+		if (normalizedType.includes("dateandtime") || normalizedType.includes("datetime") || normalizedType.includes("date")) {
+			const parsedDate = new Date(trimmedValue);
+			if (Number.isNaN(parsedDate.getTime())) {
+				throw new Error("Please enter a valid date value.");
+			}
+			return parsedDate.toISOString();
+		}
+
 		if (normalizedType.includes("whole.") || normalizedType.includes("optionset")) {
 			const parsedInteger = Number.parseInt(trimmedValue, 10);
 			if (Number.isNaN(parsedInteger)) {
