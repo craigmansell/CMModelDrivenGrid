@@ -220,6 +220,7 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, onSe
 	const [searchTerm, setSearchTerm] = React.useState(initialDisplayValue);
 	const [results, setResults] = React.useState<{ id: string; name: string }[]>([]);
 	const [isSearching, setIsSearching] = React.useState(false);
+	const [searchError, setSearchError] = React.useState<string | null>(null);
 	const [dropdownRect, setDropdownRect] = React.useState<DOMRect | null>(null);
 	const committedRef = React.useRef(false);
 	const debounceRef = React.useRef<number | undefined>(undefined);
@@ -228,11 +229,13 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, onSe
 	const performSearch = React.useCallback(
 		async (term: string) => {
 			setIsSearching(true);
+			setSearchError(null);
 			try {
 				const found = await onSearch(term);
 				setResults(found);
-			} catch {
+			} catch (err) {
 				setResults([]);
+				setSearchError(err instanceof Error ? err.message : "Search failed");
 			} finally {
 				setIsSearching(false);
 			}
@@ -289,9 +292,9 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, onSe
 		onCommit(id, name);
 	};
 
+	// Always render the dropdown once we have a position — shows spinner, error, results, or "no results".
 	const dropdownPortal =
 		dropdownRect !== null &&
-		(results.length > 0 || isSearching) &&
 		ReactDOM.createPortal(
 			<div
 				style={{
@@ -314,12 +317,18 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, onSe
 						<Text variant="small">Searching...</Text>
 					</Stack>
 				)}
-				{!isSearching && results.length === 0 && (
+				{!isSearching && searchError && (
+					<Text variant="small" style={{ padding: "6px 8px", display: "block", color: "red" }}>
+						{searchError}
+					</Text>
+				)}
+				{!isSearching && !searchError && results.length === 0 && (
 					<Text variant="small" style={{ padding: "6px 8px", display: "block", color: "#666" }}>
 						No results found
 					</Text>
 				)}
 				{!isSearching &&
+					!searchError &&
 					results.map((r) => (
 						<ActionButton
 							key={r.id}

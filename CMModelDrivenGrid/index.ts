@@ -307,34 +307,37 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 	/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
 	private getEntityMeta = async (entityType: string): Promise<{ entitySetName: string; primaryNameAttr: string }> => {
 		if (this.entityMetaCache[entityType]) return this.entityMetaCache[entityType];
-		const utils = this.context.utils as any;
-		const meta = await utils.getEntityMetadata(entityType);
-		const result = {
-			entitySetName: String(meta?.EntitySetName ?? entityType + "s"),
-			primaryNameAttr: String(meta?.PrimaryNameAttribute ?? "name"),
-		};
-		this.entityMetaCache[entityType] = result;
-		return result;
+		try {
+			const utils = this.context.utils as any;
+			const meta = await utils.getEntityMetadata(entityType);
+			const result = {
+				entitySetName: String(meta?.EntitySetName ?? `${entityType}s`),
+				primaryNameAttr: String(meta?.PrimaryNameAttribute ?? "name"),
+			};
+			this.entityMetaCache[entityType] = result;
+			return result;
+		} catch {
+			// Fall back to naming conventions if metadata fetch fails.
+			const fallback = { entitySetName: `${entityType}s`, primaryNameAttr: "name" };
+			this.entityMetaCache[entityType] = fallback;
+			return fallback;
+		}
 	};
 	/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
 
 	onSearchLookup = async (entityType: string, searchTerm: string): Promise<{ id: string; name: string }[]> => {
-		try {
-			const { primaryNameAttr } = await this.getEntityMeta(entityType);
-			const safeSearch = searchTerm.trim().replace(/'/g, "''");
-			const filter = safeSearch ? `&$filter=contains(${primaryNameAttr},'${safeSearch}')` : "";
-			const query = `?$select=${primaryNameAttr}&$top=20&$orderby=${primaryNameAttr} asc${filter}`;
-			const results = await this.context.webAPI.retrieveMultipleRecords(entityType, query);
-			return results.entities.map((e) => {
-				// eslint-disable-next-line @typescript-eslint/no-base-to-string
-				const id = String((e as Record<string, unknown>)[`${entityType}id`] ?? (e as Record<string, unknown>).id ?? "");
-				// eslint-disable-next-line @typescript-eslint/no-base-to-string
-				const name = String((e as Record<string, unknown>)[primaryNameAttr] ?? "(unknown)");
-				return { id, name };
-			});
-		} catch {
-			return [];
-		}
+		const { primaryNameAttr } = await this.getEntityMeta(entityType);
+		const safeSearch = searchTerm.trim().replace(/'/g, "''");
+		const filter = safeSearch ? `&$filter=contains(${primaryNameAttr},'${safeSearch}')` : "";
+		const query = `?$select=${primaryNameAttr}&$top=20&$orderby=${primaryNameAttr} asc${filter}`;
+		const results = await this.context.webAPI.retrieveMultipleRecords(entityType, query);
+		return results.entities.map((e) => {
+			// eslint-disable-next-line @typescript-eslint/no-base-to-string
+			const id = String((e as Record<string, unknown>)[`${entityType}id`] ?? (e as Record<string, unknown>).id ?? "");
+			// eslint-disable-next-line @typescript-eslint/no-base-to-string
+			const name = String((e as Record<string, unknown>)[primaryNameAttr] ?? "(unknown)");
+			return { id, name };
+		});
 	};
 
 	onUpdateLookupCell = async (
