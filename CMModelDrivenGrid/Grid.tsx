@@ -24,7 +24,6 @@ import { Text } from "@fluentui/react/lib/Text";
 import { TextField } from "@fluentui/react/lib/TextField";
 import { Checkbox } from "@fluentui/react/lib/Checkbox";
 import { Spinner, SpinnerSize } from "@fluentui/react/lib/Spinner";
-import { MessageBar, MessageBarType } from "@fluentui/react/lib/MessageBar";
 import { useTheme } from "@fluentui/react";
 
 type DataSet = ComponentFramework.PropertyHelper.DataSetApi.EntityRecord & IObjectWithKey;
@@ -35,6 +34,8 @@ interface EditingCell {
 	value: string;
 	originalValue: string;
 }
+
+type CellSaveStatus = "saving" | "saved" | "failed";
 
 type FilterByMode =
 	| "equals"
@@ -47,8 +48,6 @@ type FilterByMode =
 	| "notBeginsWith"
 	| "endsWith"
 	| "notEndsWith";
-
-type SaveStatus = "idle" | "saving" | "saved" | "failed";
 
 function stringFormat(template: string, ...args: string[]): string {
 	args?.forEach((arg, index) => {
@@ -75,6 +74,7 @@ export interface GridProps {
 	highlightColor: string | null;
 	enableLookupLinks: boolean;
 	enableInlineEdit: boolean;
+	columnOptions?: Record<string, { label: string; value: string }[]>;
 	setSelectedRecords: (ids: string[]) => void;
 	onNavigate: (item?: ComponentFramework.PropertyHelper.DataSetApi.EntityRecord) => void;
 	onOpenLookup: (entityType: string, id: string) => void;
@@ -155,6 +155,55 @@ const EditingTextField: React.FC<EditingTextFieldProps> = ({ initialValue, onCom
 	);
 };
 
+// Self-contained dropdown for choice (OptionSet / TwoOptions) fields.
+interface EditingDropdownProps {
+	initialValue: string;
+	options: { label: string; value: string }[];
+	onCommit: (value: string) => void;
+	onCancel: () => void;
+}
+
+const EditingDropdown: React.FC<EditingDropdownProps> = ({ initialValue, options, onCommit, onCancel }) => {
+	const committedRef = React.useRef(false);
+
+	const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+		if (committedRef.current) return;
+		committedRef.current = true;
+		onCommit(event.target.value);
+	};
+
+	const handleKeyDown = (event: React.KeyboardEvent<HTMLSelectElement>) => {
+		if (event.key === "Escape") {
+			event.preventDefault();
+			committedRef.current = true;
+			onCancel();
+		}
+	};
+
+	const handleBlur = (event: React.FocusEvent<HTMLSelectElement>) => {
+		if (committedRef.current) return;
+		committedRef.current = true;
+		onCommit(event.target.value);
+	};
+
+	return (
+		<select
+			autoFocus
+			defaultValue={initialValue}
+			onChange={handleChange}
+			onKeyDown={handleKeyDown}
+			onBlur={handleBlur}
+			style={{ width: "100%", minHeight: 24, fontSize: "inherit", border: "none", outline: "none" }}
+		>
+			{options.map((opt) => (
+				<option key={opt.value} value={opt.value}>
+					{opt.label}
+				</option>
+			))}
+		</select>
+	);
+};
+
 const onRenderDetailsHeader: IRenderFunction<IDetailsHeaderProps> = (props, defaultRender) => {
 	if (props && defaultRender) {
 		return (
@@ -198,6 +247,7 @@ export const Grid = React.memo((props: GridProps) => {
 		totalResultCount,
 		onOpenLookup,
 		onUpdateCell,
+		columnOptions,
 	} = props;
 	const theme = useTheme();
 	const blankValueLabel = "(Blanks)";
@@ -222,8 +272,6 @@ export const Grid = React.memo((props: GridProps) => {
 	});
 
 	const [isComponentLoading, setIsLoading] = React.useState<boolean>(false);
-	const [saveStatus, setSaveStatus] = React.useState<SaveStatus>("idle");
-	const saveStatusTimeoutRef = React.useRef<number | undefined>(undefined);
 	const [filterColumn, setFilterColumn] = React.useState<IColumn | undefined>();
 	const [filterTarget, setFilterTarget] = React.useState<HTMLElement | undefined>();
 	const [allFilterValues, setAllFilterValues] = React.useState<string[]>([]);
@@ -232,28 +280,41 @@ export const Grid = React.memo((props: GridProps) => {
 	const [filterByTarget, setFilterByTarget] = React.useState<HTMLElement | undefined>();
 	const [filterByMode, setFilterByMode] = React.useState<FilterByMode>("equals");
 	const [filterByValue, setFilterByValue] = React.useState<string>("");
-	const [editingCell, setEditingCell] = React.useState<EditingCell | undefined>();
-	// Ref keeps commitEditCell stable so the TextField's onBlur never has a stale closure.
-	const editingCellRef = React.useRef<EditingCell | undefined>(undefined);
-	editingCellRef.current = editingCell;
 
+	// Multi-cell editing state — each key is `${recordId}-${columnName}`.
+	const [editingCells, setEditingCells] = React.useState<Map<string, EditingCell>>(() => new Map());
+	const editingCellsRef = React.useRef<Map<string, EditingCell>>(new Map());
+	editingCellsRef.current = editingCells;
+
+	// Per-cell save status — same key format as editingCells.
+	const [cellSaveStatuses, setCellSaveStatuses] = React.useState<Map<string, CellSaveStatus>>(() => new Map());
+	const cellSaveTimeoutsRef = React.useRef<Map<string, number>>(new Map());
+
+	// Cleanup all pending timeouts on unmount.
 	React.useEffect(() => {
-		return () => {
-			if (saveStatusTimeoutRef.current !== undefined) {
-				window.clearTimeout(saveStatusTimeoutRef.current);
-			}
-		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		return () => { cellSaveTimeoutsRef.current.forEach((id) => window.clearTimeout(id)); };
 	}, []);
 
-	const setTransientSaveStatus = React.useCallback((status: "saved" | "failed", timeoutMs: number) => {
-		if (saveStatusTimeoutRef.current !== undefined) {
-			window.clearTimeout(saveStatusTimeoutRef.current);
+	const setCellTransientStatus = React.useCallback((cellKey: string, status: "saved" | "failed", timeoutMs: number) => {
+		const existing = cellSaveTimeoutsRef.current.get(cellKey);
+		if (existing !== undefined) {
+			window.clearTimeout(existing);
 		}
-		setSaveStatus(status);
-		saveStatusTimeoutRef.current = window.setTimeout(() => {
-			setSaveStatus("idle");
-			saveStatusTimeoutRef.current = undefined;
+		setCellSaveStatuses((prev) => {
+			const next = new Map(prev);
+			next.set(cellKey, status);
+			return next;
+		});
+		const id = window.setTimeout(() => {
+			cellSaveTimeoutsRef.current.delete(cellKey);
+			setCellSaveStatuses((prev) => {
+				const next = new Map(prev);
+				next.delete(cellKey);
+				return next;
+			});
 		}, timeoutMs);
+		cellSaveTimeoutsRef.current.set(cellKey, id);
 	}, []);
 
 	const isInlineEditableDataType = React.useCallback((dataType: string): boolean => {
@@ -266,6 +327,7 @@ export const Grid = React.memo((props: GridProps) => {
 			"regarding",
 			"image",
 			"file",
+			"multiselectoptionset",
 		];
 		return !unsupportedMarkers.some((marker) => normalizedType.includes(marker));
 	}, []);
@@ -311,6 +373,10 @@ export const Grid = React.memo((props: GridProps) => {
 			dataType: string,
 			formattedValue: string
 		) => {
+			const cellKey = `${item.getRecordId()}-${column.key}`;
+			// Don't start editing if already in progress for this cell.
+			if (editingCellsRef.current.has(cellKey)) return;
+
 			const initialRawValue = item.getValue(column.key);
 			let initialValue = formattedValue;
 			if (typeof initialRawValue === "string") {
@@ -321,41 +387,68 @@ export const Grid = React.memo((props: GridProps) => {
 				initialValue = initialRawValue.toISOString();
 			}
 
-			setEditingCell({
-				recordId: item.getRecordId(),
-				columnName: column.key,
-				dataType: dataType,
-				value: initialValue,
-				originalValue: initialValue,
+			setEditingCells((prev) => {
+				const next = new Map(prev);
+				next.set(cellKey, {
+					recordId: item.getRecordId(),
+					columnName: column.key,
+					dataType,
+					value: initialValue,
+					originalValue: initialValue,
+				});
+				return next;
 			});
 		},
 		[]
 	);
 
-	const commitEditCell = React.useCallback(async (finalValue: string) => {
-		const current = editingCellRef.current;
-		if (!current) {
-			return;
-		}
+	const cancelEditCell = React.useCallback((cellKey: string) => {
+		setEditingCells((prev) => {
+			if (!prev.has(cellKey)) return prev;
+			const next = new Map(prev);
+			next.delete(cellKey);
+			return next;
+		});
+	}, []);
 
-		setEditingCell(undefined);
+	const commitEditCell = React.useCallback(
+		async (cellKey: string, finalValue: string) => {
+			const current = editingCellsRef.current.get(cellKey);
+			if (!current) return;
 
-		if (finalValue === current.originalValue) {
-			return;
-		}
+			// Remove from editing state immediately.
+			setEditingCells((prev) => {
+				const next = new Map(prev);
+				next.delete(cellKey);
+				return next;
+			});
 
-		if (saveStatusTimeoutRef.current !== undefined) {
-			window.clearTimeout(saveStatusTimeoutRef.current);
-			saveStatusTimeoutRef.current = undefined;
-		}
-		setSaveStatus("saving");
-		try {
-			await onUpdateCell(current.recordId, current.columnName, finalValue, current.dataType);
-			setTransientSaveStatus("saved", 2000);
-		} catch {
-			setTransientSaveStatus("failed", 4000);
-		}
-	}, [onUpdateCell, setTransientSaveStatus]);
+			// Nothing to save if unchanged.
+			if (finalValue === current.originalValue) return;
+
+			// Clear any existing timeout for this cell.
+			const existing = cellSaveTimeoutsRef.current.get(cellKey);
+			if (existing !== undefined) {
+				window.clearTimeout(existing);
+				cellSaveTimeoutsRef.current.delete(cellKey);
+			}
+
+			// Show "saving" for this cell.
+			setCellSaveStatuses((prev) => {
+				const next = new Map(prev);
+				next.set(cellKey, "saving");
+				return next;
+			});
+
+			try {
+				await onUpdateCell(current.recordId, current.columnName, finalValue, current.dataType);
+				setCellTransientStatus(cellKey, "saved", 2000);
+			} catch {
+				setCellTransientStatus(cellKey, "failed", 4000);
+			}
+		},
+		[onUpdateCell, setCellTransientStatus]
+	);
 
 	const items: DataSet[] = React.useMemo(() => {
 		setIsLoading(false);
@@ -374,10 +467,10 @@ export const Grid = React.memo((props: GridProps) => {
 		return Object.values(records).filter((record): record is DataSet => record !== undefined);
 	}, [records, sortedRecordIds, setIsLoading]);
 
-	// New array reference when editingCell changes so Fluent UI's List re-renders
-	// the affected row without requiring a full DetailsList remount.
+	// New array reference when any editing cell or cell save status changes so
+	// Fluent UI's List re-renders the affected row without a full DetailsList remount.
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	const displayItems = React.useMemo(() => [...items], [items, editingCell?.recordId, editingCell?.columnName]);
+	const displayItems = React.useMemo(() => [...items], [items, editingCells, cellSaveStatuses]);
 
 	const isFilterValueRequired = React.useCallback((mode: FilterByMode): boolean => {
 		return mode !== "containsData" && mode !== "doesNotContainData";
@@ -720,8 +813,9 @@ export const Grid = React.memo((props: GridProps) => {
 							? "twooptions"
 							: "");
 			const recordId = item.getRecordId();
-			const isEditingThisCell =
-				editingCell?.recordId === recordId && editingCell?.columnName === column.fieldName;
+			const cellKey = `${recordId}-${column.fieldName}`;
+			const isEditingThisCell = editingCells.has(cellKey);
+			const cellSaveStatus = cellSaveStatuses.get(cellKey);
 			const isPrimitiveRawValue =
 				rawCellValue === null ||
 				rawCellValue === undefined ||
@@ -734,20 +828,75 @@ export const Grid = React.memo((props: GridProps) => {
 				!itemsLoading &&
 				!isComponentLoading;
 
-			if (isEditingThisCell && editingCell) {
+			// Render active editor.
+			if (isEditingThisCell) {
+				const cellData = editingCells.get(cellKey)!;
+				const normalizedType = effectiveDataType.toLowerCase();
+				const isOptionSet = normalizedType.includes("optionset") && !normalizedType.includes("multiselect");
+				const isTwoOptions = normalizedType.includes("twooptions") || normalizedType.includes("boolean");
+				const options = columnOptions?.[column.fieldName];
+
+				if (isOptionSet && options && options.length > 0) {
+					return (
+						<EditingDropdown
+							key={cellKey}
+							initialValue={cellData.value}
+							options={options}
+							onCommit={(value) => void commitEditCell(cellKey, value)}
+							onCancel={() => cancelEditCell(cellKey)}
+						/>
+					);
+				}
+
+				if (isTwoOptions) {
+					const boolOptions = [
+						{ label: "Yes", value: "true" },
+						{ label: "No", value: "false" },
+					];
+					return (
+						<EditingDropdown
+							key={cellKey}
+							initialValue={cellData.value}
+							options={boolOptions}
+							onCommit={(value) => void commitEditCell(cellKey, value)}
+							onCancel={() => cancelEditCell(cellKey)}
+						/>
+					);
+				}
+
 				return (
 					<EditingTextField
-						key={`${editingCell.recordId}-${editingCell.columnName}`}
-						initialValue={editingCell.value}
-						onCommit={(finalValue) => void commitEditCell(finalValue)}
-						onCancel={() => setEditingCell(undefined)}
+						key={cellKey}
+						initialValue={cellData.value}
+						onCommit={(finalValue) => void commitEditCell(cellKey, finalValue)}
+						onCancel={() => cancelEditCell(cellKey)}
 					/>
 				);
 			}
 
+			// Per-cell save status icon shown alongside the cell value.
+			const statusIcon =
+				cellSaveStatus === "saving" ? (
+					<Spinner size={SpinnerSize.xSmall} />
+				) : cellSaveStatus === "saved" ? (
+					<Icon iconName="CheckMark" style={{ color: theme.palette.green, fontSize: 12 }} />
+				) : cellSaveStatus === "failed" ? (
+					<Icon iconName="Error" style={{ color: theme.palette.redDark, fontSize: 12 }} />
+				) : null;
+
+			const wrapWithStatus = (content: React.ReactNode) =>
+				statusIcon ? (
+					<Stack horizontal verticalAlign="center" tokens={{ childrenGap: 4 }}>
+						{statusIcon}
+						<span>{content}</span>
+					</Stack>
+				) : (
+					<>{content}</>
+				);
+
 			const lookupReference = enableLookupLinks ? getLookupReference(item, column.fieldName) : null;
 			if (lookupReference && formattedValue) {
-				return (
+				return wrapWithStatus(
 					<Link
 						onClick={(event) => {
 							event?.preventDefault();
@@ -769,17 +918,27 @@ export const Grid = React.memo((props: GridProps) => {
 						}}
 						style={{ cursor: "text", display: "block", width: "100%", minHeight: "1em" }}
 						title="Double-click to edit">
-						{formattedValue}
+						{statusIcon ? (
+							<Stack horizontal verticalAlign="center" tokens={{ childrenGap: 4 }}>
+								{statusIcon}
+								<span>{formattedValue}</span>
+							</Stack>
+						) : (
+							formattedValue
+						)}
 					</span>
 				);
 			}
 
-			return <>{formattedValue}</>;
+			return wrapWithStatus(formattedValue);
 		},
 		[
 			beginEditCell,
+			cancelEditCell,
 			commitEditCell,
-			editingCell,
+			editingCells,
+			cellSaveStatuses,
+			columnOptions,
 			enableInlineEdit,
 			enableLookupLinks,
 			getLookupReference,
@@ -787,6 +946,8 @@ export const Grid = React.memo((props: GridProps) => {
 			isInlineEditableDataType,
 			itemsLoading,
 			onOpenLookup,
+			theme.palette.green,
+			theme.palette.redDark,
 		]
 	);
 
@@ -984,37 +1145,17 @@ export const Grid = React.memo((props: GridProps) => {
 					)}
 				</ScrollablePane>
 				{(itemsLoading || isComponentLoading) && <Overlay />}
-			{saveStatus !== "idle" && (
-				<MessageBar
-					messageBarType={
-						saveStatus === "failed" ? MessageBarType.error :
-						saveStatus === "saved" ? MessageBarType.success :
-						MessageBarType.info
-					}
-					isMultiline={false}
-					styles={{ root: { position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 5 } }}
-				>
-					{saveStatus === "saving" ? (
-						<Stack horizontal verticalAlign="center" tokens={{ childrenGap: 6 }}>
-							<Spinner size={SpinnerSize.xSmall} />
-							<span>Saving...</span>
-						</Stack>
-					) : saveStatus === "saved" ? "Saved" : "Save failed"}
-				</MessageBar>
-			)}
-		</Stack.Item>
+			</Stack.Item>
 			<Stack.Item>
 				<Stack horizontal style={{ width: "100%", paddingLeft: 8, paddingRight: 8 }}>
 					<Stack.Item align="center">
-						<Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
-							<Text>
-								{stringFormat(
-									resources.getString("Label_Grid_Footer_RecordCount"),
-									totalResultCount === -1 ? "5000+" : totalResultCount.toString(),
-									selection.getSelectedCount().toString()
-								)}
-							</Text>
-						</Stack>
+						<Text>
+							{stringFormat(
+								resources.getString("Label_Grid_Footer_RecordCount"),
+								totalResultCount === -1 ? "5000+" : totalResultCount.toString(),
+								selection.getSelectedCount().toString()
+							)}
+						</Text>
 					</Stack.Item>
 					<Stack.Item grow align="center" style={{ textAlign: "center" }}>
 						{!isFullScreen && <Link onClick={onFullScreen}>{resources.getString("Label_ShowFullScreen")}</Link>}

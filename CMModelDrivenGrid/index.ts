@@ -17,6 +17,8 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 	records: Record<string, ComponentFramework.PropertyHelper.DataSetApi.EntityRecord>;
 	currentPage = 1;
 	isFullScreen = false;
+	columnOptions: Record<string, { label: string; value: string }[]> = {};
+	private columnOptionsFetchedFor: string | undefined;
 
 	setSelectedRecords = (ids: string[]): void => {
 		this.context.parameters.records.setSelectedRecordIds(ids);
@@ -301,6 +303,114 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		this.context.mode.setFullScreen(true);
 	};
 
+	private fetchColumnOptions = async (
+		entityType: string,
+		columns: ComponentFramework.PropertyHelper.DataSetApi.Column[]
+	): Promise<void> => {
+		const optionSetCols = columns.filter((col) => {
+			const t = col.dataType.toLowerCase();
+			return t.includes("optionset") && !t.includes("multiselectoptionset");
+		});
+
+		if (optionSetCols.length === 0) return;
+
+		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+		try {
+			// EntityMetadata is typed as [key: string]: any; we use explicit any-casts throughout.
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const utils = this.context.utils as any;
+			const metadata = await utils.getEntityMetadata(entityType, optionSetCols.map((c) => c.name));
+
+			let changed = false;
+			optionSetCols.forEach((col) => {
+				try {
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					const attrMeta: any =
+						typeof metadata?.Attributes?.getByName === "function"
+							? metadata.Attributes.getByName(col.name)
+							: metadata?.[col.name];
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					const rawOptions: any[] = attrMeta?.OptionSet?.Options ?? attrMeta?.AttributeType?.Options ?? [];
+					if (Array.isArray(rawOptions) && rawOptions.length > 0) {
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						this.columnOptions[col.name] = rawOptions.map((opt: any) => ({
+							label: String(
+								opt.Label?.UserLocalizedLabel?.Label ?? opt.Label ?? opt.DisplayName ?? opt.Value
+							),
+							value: String(opt.Value),
+						}));
+						changed = true;
+					}
+				} catch {
+					// ignore per-column errors
+				}
+			});
+
+			if (changed) {
+				this.renderGrid();
+			}
+		} catch {
+			// Metadata fetch is best-effort; fall back to text input for OptionSet columns.
+		}
+		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+	};
+
+	private renderGrid = (): void => {
+		if (!this.container || !this.context) return;
+		const dataset = this.context.parameters.records;
+		const paging = dataset.paging;
+
+		const rawAllocatedWidth = this.context.mode.allocatedWidth as unknown as string;
+		const rawAllocatedHeight = this.context.mode.allocatedHeight as unknown as string;
+		let allocatedWidth = parseInt(rawAllocatedWidth, 10);
+		let allocatedHeight = parseInt(rawAllocatedHeight, 10);
+
+		if (!Number.isFinite(allocatedWidth) || allocatedWidth <= 0) {
+			allocatedWidth = -1;
+		}
+		if (!this.isFullScreen && this.context.parameters.SubGridHeight.raw) {
+			allocatedHeight = this.context.parameters.SubGridHeight.raw;
+		}
+		if (!Number.isFinite(allocatedHeight) || allocatedHeight <= 0) {
+			allocatedHeight = 420;
+		}
+
+		ReactDOM.render(
+			React.createElement(Grid, {
+				width: allocatedWidth,
+				height: allocatedHeight,
+				columns: dataset.columns,
+				records: this.records ?? {},
+				sortedRecordIds: this.sortedRecordsIds ?? [],
+				hasNextPage: paging.hasNextPage,
+				hasPreviousPage: paging.hasPreviousPage,
+				currentPage: this.currentPage,
+				totalResultCount: paging.totalResultCount,
+				sorting: dataset.sorting,
+				filtering: dataset.filtering?.getFilter(),
+				resources: this.resources,
+				itemsLoading: dataset.loading,
+				highlightValue: this.context.parameters.HighlightValue.raw,
+				highlightColor: this.context.parameters.HighlightColor.raw,
+				enableLookupLinks: this.context.parameters.EnableLookupLinks.raw ?? true,
+				enableInlineEdit: true,
+				columnOptions: this.columnOptions,
+				setSelectedRecords: this.setSelectedRecords,
+				onNavigate: this.onNavigate,
+				onOpenLookup: this.onOpenLookup,
+				onSort: this.onSort,
+				onFilter: this.onFilter,
+				loadFirstPage: this.loadFirstPage,
+				loadNextPage: this.loadNextPage,
+				loadPreviousPage: this.loadPreviousPage,
+				onUpdateCell: this.onUpdateCell,
+				isFullScreen: this.isFullScreen,
+				onFullScreen: this.onFullScreen,
+			}),
+			this.container
+		);
+	};
+
 	/**
 	 * Used to initialize the control instance. Controls can kick off remote server calls and other initialization actions here.
 	 * Data-set values are not initialized here, use updateView.
@@ -329,7 +439,6 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 	 */
 	public updateView(context: ComponentFramework.Context<IInputs>): void {
 		const dataset = context.parameters.records;
-		const paging = context.parameters.records.paging;
 
 		// In MDAs, the initial population of the dataset does not provide updatedProperties.
 		// Ensure we always hydrate local record caches at least once.
@@ -354,56 +463,15 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		this.records = dataset.records ?? {};
 		this.sortedRecordsIds = dataset.sortedRecordIds ?? [];
 
-		const rawAllocatedWidth = context.mode.allocatedWidth as unknown as string;
-		const rawAllocatedHeight = context.mode.allocatedHeight as unknown as string;
-		let allocatedWidth = parseInt(rawAllocatedWidth, 10);
-		let allocatedHeight = parseInt(rawAllocatedHeight, 10);
-
-		if (!Number.isFinite(allocatedWidth) || allocatedWidth <= 0) {
-			allocatedWidth = -1;
+		// Kick off a one-time metadata fetch for OptionSet columns whenever the
+		// entity type changes (e.g. on first load or navigation to a different table).
+		const entityType = dataset.getTargetEntityType?.();
+		if (entityType && entityType !== this.columnOptionsFetchedFor) {
+			this.columnOptionsFetchedFor = entityType;
+			void this.fetchColumnOptions(entityType, dataset.columns);
 		}
 
-		// For MDA subgrid support when running on mobile/narrow formfactor
-		if (!this.isFullScreen && context.parameters.SubGridHeight.raw) {
-			allocatedHeight = context.parameters.SubGridHeight.raw;
-		}
-		if (!Number.isFinite(allocatedHeight) || allocatedHeight <= 0) {
-			allocatedHeight = 420;
-		}
-
-		ReactDOM.render(
-			React.createElement(Grid, {
-				width: allocatedWidth,
-				height: allocatedHeight,
-				columns: dataset.columns,
-				records: this.records ?? {},
-				sortedRecordIds: this.sortedRecordsIds ?? [],
-				hasNextPage: paging.hasNextPage,
-				hasPreviousPage: paging.hasPreviousPage,
-				currentPage: this.currentPage,
-				totalResultCount: paging.totalResultCount,
-				sorting: dataset.sorting,
-				filtering: dataset.filtering?.getFilter(),
-				resources: this.resources,
-				itemsLoading: dataset.loading,
-				highlightValue: this.context.parameters.HighlightValue.raw,
-				highlightColor: this.context.parameters.HighlightColor.raw,
-				enableLookupLinks: this.context.parameters.EnableLookupLinks.raw ?? true,
-				enableInlineEdit: true,
-				setSelectedRecords: this.setSelectedRecords,
-				onNavigate: this.onNavigate,
-				onOpenLookup: this.onOpenLookup,
-				onSort: this.onSort,
-				onFilter: this.onFilter,
-				loadFirstPage: this.loadFirstPage,
-				loadNextPage: this.loadNextPage,
-				loadPreviousPage: this.loadPreviousPage,
-				onUpdateCell: this.onUpdateCell,
-				isFullScreen: this.isFullScreen,
-				onFullScreen: this.onFullScreen,
-			}),
-			this.container
-		);
+		this.renderGrid();
 	}
 
 	/**
