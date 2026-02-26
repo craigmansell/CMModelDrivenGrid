@@ -33,6 +33,8 @@ interface EditingCell {
 	dataType: string;
 	value: string;
 	originalValue: string;
+	/** Entity type of the lookup target — set when editing a lookup field. */
+	lookupEntityType?: string;
 }
 
 type CellSaveStatus = "saving" | "saved" | "failed";
@@ -100,6 +102,8 @@ export interface GridProps {
 	loadNextPage: () => void;
 	loadPreviousPage: () => void;
 	onUpdateCell: (recordId: string, columnName: string, value: string, dataType: string) => Promise<void> | void;
+	onUpdateLookupCell?: (recordId: string, columnName: string, targetId: string, targetEntityType: string) => Promise<void>;
+	onSearchLookup?: (entityType: string, searchTerm: string) => Promise<{ id: string; name: string }[]>;
 	onFullScreen: () => void;
 	isFullScreen: boolean;
 	item?: DataSet;
@@ -116,7 +120,6 @@ interface EditingTextFieldProps {
 const EditingTextField: React.FC<EditingTextFieldProps> = ({ initialValue, onCommit, onCancel }) => {
 	const [value, setValue] = React.useState(initialValue);
 	const valueRef = React.useRef(initialValue);
-	// Guard against double-commit (blur fires after Enter/Escape unmounts the input).
 	const committedRef = React.useRef(false);
 
 	const handleChange = (_ev: React.FormEvent, newValue?: string) => {
@@ -137,7 +140,7 @@ const EditingTextField: React.FC<EditingTextFieldProps> = ({ initialValue, onCom
 			handleCommit();
 		} else if (event.key === "Escape") {
 			event.preventDefault();
-			committedRef.current = true; // prevent blur from committing
+			committedRef.current = true;
 			onCancel();
 		}
 	};
@@ -204,6 +207,139 @@ const EditingDropdown: React.FC<EditingDropdownProps> = ({ initialValue, options
 	);
 };
 
+// Searchable lookup picker — shows a text input and a Callout dropdown of results.
+interface EditingLookupProps {
+	initialDisplayValue: string;
+	onSearch: (term: string) => Promise<{ id: string; name: string }[]>;
+	onCommit: (id: string, name: string) => void;
+	onCancel: () => void;
+}
+
+const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, onSearch, onCommit, onCancel }) => {
+	const [searchTerm, setSearchTerm] = React.useState(initialDisplayValue);
+	const [results, setResults] = React.useState<{ id: string; name: string }[]>([]);
+	const [isSearching, setIsSearching] = React.useState(false);
+	const committedRef = React.useRef(false);
+	const debounceRef = React.useRef<number | undefined>(undefined);
+	const containerRef = React.useRef<HTMLDivElement>(null);
+
+	const performSearch = React.useCallback(
+		async (term: string) => {
+			setIsSearching(true);
+			try {
+				const found = await onSearch(term);
+				setResults(found);
+			} catch {
+				setResults([]);
+			} finally {
+				setIsSearching(false);
+			}
+		},
+		[onSearch]
+	);
+
+	// Search on mount with the current display value.
+	React.useEffect(() => {
+		void performSearch(initialDisplayValue);
+		return () => {
+			if (debounceRef.current !== undefined) {
+				window.clearTimeout(debounceRef.current);
+			}
+		};
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
+
+	const handleChange = (_ev: React.FormEvent, newValue?: string) => {
+		const term = newValue ?? "";
+		setSearchTerm(term);
+		if (debounceRef.current !== undefined) {
+			window.clearTimeout(debounceRef.current);
+		}
+		debounceRef.current = window.setTimeout(() => {
+			void performSearch(term);
+		}, 300);
+	};
+
+	const handleKeyDown = (event: React.KeyboardEvent) => {
+		if (event.key === "Escape") {
+			event.preventDefault();
+			committedRef.current = true;
+			onCancel();
+		}
+	};
+
+	// Delay cancel so a click on a result item fires before we cancel.
+	const handleBlur = () => {
+		window.setTimeout(() => {
+			if (!committedRef.current) {
+				committedRef.current = true;
+				onCancel();
+			}
+		}, 200);
+	};
+
+	const handleSelect = (id: string, name: string) => {
+		if (committedRef.current) return;
+		committedRef.current = true;
+		onCommit(id, name);
+	};
+
+	const showDropdown = results.length > 0 || isSearching;
+
+	return (
+		<div ref={containerRef}>
+			<TextField
+				autoFocus
+				borderless
+				value={searchTerm}
+				styles={{ root: { width: "100%" }, fieldGroup: { minHeight: 24 } }}
+				onChange={handleChange}
+				onKeyDown={handleKeyDown}
+				onBlur={handleBlur}
+			/>
+			{showDropdown && containerRef.current && (
+				<Callout
+					target={containerRef.current}
+					directionalHint={DirectionalHint.bottomLeftEdge}
+					isBeakVisible={false}
+					gapSpace={0}
+					calloutMaxHeight={200}
+					setInitialFocus={false}
+					styles={{ calloutMain: { minWidth: 200 } }}
+					onDismiss={() => {
+						if (!committedRef.current) {
+							committedRef.current = true;
+							onCancel();
+						}
+					}}
+				>
+					{isSearching && (
+						<Stack horizontal verticalAlign="center" tokens={{ childrenGap: 6 }} style={{ padding: "6px 8px" }}>
+							<Spinner size={SpinnerSize.xSmall} />
+							<Text variant="small">Searching...</Text>
+						</Stack>
+					)}
+					{!isSearching && results.length === 0 && (
+						<Text variant="small" style={{ padding: "6px 8px", display: "block", color: "#666" }}>
+							No results found
+						</Text>
+					)}
+					{!isSearching &&
+						results.map((r) => (
+							<ActionButton
+								key={r.id}
+								styles={{ root: { width: "100%", textAlign: "left", height: 28, paddingLeft: 8 } }}
+								onClick={() => handleSelect(r.id, r.name)}
+							>
+								{r.name}
+							</ActionButton>
+						))}
+				</Callout>
+			)}
+		</div>
+	);
+};
+
 const onRenderDetailsHeader: IRenderFunction<IDetailsHeaderProps> = (props, defaultRender) => {
 	if (props && defaultRender) {
 		return (
@@ -247,6 +383,8 @@ export const Grid = React.memo((props: GridProps) => {
 		totalResultCount,
 		onOpenLookup,
 		onUpdateCell,
+		onUpdateLookupCell,
+		onSearchLookup,
 		columnOptions,
 	} = props;
 	const theme = useTheme();
@@ -320,9 +458,7 @@ export const Grid = React.memo((props: GridProps) => {
 	const isInlineEditableDataType = React.useCallback((dataType: string): boolean => {
 		const normalizedType = dataType.toLowerCase();
 		const unsupportedMarkers = [
-			"lookup",
 			"customer",
-			"owner",
 			"partylist",
 			"regarding",
 			"image",
@@ -330,6 +466,11 @@ export const Grid = React.memo((props: GridProps) => {
 			"multiselectoptionset",
 		];
 		return !unsupportedMarkers.some((marker) => normalizedType.includes(marker));
+	}, []);
+
+	const isLookupDataType = React.useCallback((dataType: string): boolean => {
+		const n = dataType.toLowerCase();
+		return n.includes("lookup") || n.includes("owner");
 	}, []);
 
 	const getLookupReference = React.useCallback(
@@ -374,7 +515,6 @@ export const Grid = React.memo((props: GridProps) => {
 			formattedValue: string
 		) => {
 			const cellKey = `${item.getRecordId()}-${column.key}`;
-			// Don't start editing if already in progress for this cell.
 			if (editingCellsRef.current.has(cellKey)) return;
 
 			const initialRawValue = item.getValue(column.key);
@@ -387,6 +527,15 @@ export const Grid = React.memo((props: GridProps) => {
 				initialValue = initialRawValue.toISOString();
 			}
 
+			// For lookup fields, capture the target entity type from the existing reference.
+			let lookupEntityType: string | undefined;
+			if (isLookupDataType(dataType)) {
+				const ref = getLookupReference(item, column.key);
+				lookupEntityType = ref?.entityType;
+				// Always use the formatted display value for lookups (the raw value is an object).
+				initialValue = formattedValue;
+			}
+
 			setEditingCells((prev) => {
 				const next = new Map(prev);
 				next.set(cellKey, {
@@ -395,11 +544,12 @@ export const Grid = React.memo((props: GridProps) => {
 					dataType,
 					value: initialValue,
 					originalValue: initialValue,
+					lookupEntityType,
 				});
 				return next;
 			});
 		},
-		[]
+		[getLookupReference, isLookupDataType]
 	);
 
 	const cancelEditCell = React.useCallback((cellKey: string) => {
@@ -416,24 +566,20 @@ export const Grid = React.memo((props: GridProps) => {
 			const current = editingCellsRef.current.get(cellKey);
 			if (!current) return;
 
-			// Remove from editing state immediately.
 			setEditingCells((prev) => {
 				const next = new Map(prev);
 				next.delete(cellKey);
 				return next;
 			});
 
-			// Nothing to save if unchanged.
 			if (finalValue === current.originalValue) return;
 
-			// Clear any existing timeout for this cell.
 			const existing = cellSaveTimeoutsRef.current.get(cellKey);
 			if (existing !== undefined) {
 				window.clearTimeout(existing);
 				cellSaveTimeoutsRef.current.delete(cellKey);
 			}
 
-			// Show "saving" for this cell.
 			setCellSaveStatuses((prev) => {
 				const next = new Map(prev);
 				next.set(cellKey, "saving");
@@ -448,6 +594,39 @@ export const Grid = React.memo((props: GridProps) => {
 			}
 		},
 		[onUpdateCell, setCellTransientStatus]
+	);
+
+	const commitLookupCell = React.useCallback(
+		async (cellKey: string, targetId: string, targetEntityType: string) => {
+			const current = editingCellsRef.current.get(cellKey);
+			if (!current || !onUpdateLookupCell) return;
+
+			setEditingCells((prev) => {
+				const next = new Map(prev);
+				next.delete(cellKey);
+				return next;
+			});
+
+			const existing = cellSaveTimeoutsRef.current.get(cellKey);
+			if (existing !== undefined) {
+				window.clearTimeout(existing);
+				cellSaveTimeoutsRef.current.delete(cellKey);
+			}
+
+			setCellSaveStatuses((prev) => {
+				const next = new Map(prev);
+				next.set(cellKey, "saving");
+				return next;
+			});
+
+			try {
+				await onUpdateLookupCell(current.recordId, current.columnName, targetId, targetEntityType);
+				setCellTransientStatus(cellKey, "saved", 2000);
+			} catch {
+				setCellTransientStatus(cellKey, "failed", 4000);
+			}
+		},
+		[onUpdateLookupCell, setCellTransientStatus]
 	);
 
 	const items: DataSet[] = React.useMemo(() => {
@@ -467,8 +646,6 @@ export const Grid = React.memo((props: GridProps) => {
 		return Object.values(records).filter((record): record is DataSet => record !== undefined);
 	}, [records, sortedRecordIds, setIsLoading]);
 
-	// New array reference when any editing cell or cell save status changes so
-	// Fluent UI's List re-renders the affected row without a full DetailsList remount.
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	const displayItems = React.useMemo(() => [...items], [items, editingCells, cellSaveStatuses]);
 
@@ -816,22 +993,42 @@ export const Grid = React.memo((props: GridProps) => {
 			const cellKey = `${recordId}-${column.fieldName}`;
 			const isEditingThisCell = editingCells.has(cellKey);
 			const cellSaveStatus = cellSaveStatuses.get(cellKey);
+			const normalizedType = effectiveDataType.toLowerCase();
+			const isLookup = isLookupDataType(effectiveDataType);
+
 			const isPrimitiveRawValue =
 				rawCellValue === null ||
 				rawCellValue === undefined ||
 				typeof rawCellValue === "string" ||
 				typeof rawCellValue === "number" ||
 				typeof rawCellValue === "boolean";
+
 			const canEditThisCell =
 				enableInlineEdit &&
-				(isPrimitiveRawValue || (!!effectiveDataType && isInlineEditableDataType(effectiveDataType))) &&
 				!itemsLoading &&
-				!isComponentLoading;
+				!isComponentLoading &&
+				((isPrimitiveRawValue || (!!effectiveDataType && isInlineEditableDataType(effectiveDataType))) ||
+					(isLookup && !!onSearchLookup));
 
-			// Render active editor.
+			// ── Active editor ──────────────────────────────────────────────────
 			if (isEditingThisCell) {
 				const cellData = editingCells.get(cellKey)!;
-				const normalizedType = effectiveDataType.toLowerCase();
+
+				// Lookup editor
+				if (isLookup && onSearchLookup && cellData.lookupEntityType) {
+					const entityType = cellData.lookupEntityType;
+					return (
+						<EditingLookup
+							key={cellKey}
+							initialDisplayValue={cellData.value}
+							onSearch={(term) => onSearchLookup(entityType, term)}
+							onCommit={(id) => void commitLookupCell(cellKey, id, entityType)}
+							onCancel={() => cancelEditCell(cellKey)}
+						/>
+					);
+				}
+
+				// Choice (OptionSet) editor
 				const isOptionSet = normalizedType.includes("optionset") && !normalizedType.includes("multiselect");
 				const isTwoOptions = normalizedType.includes("twooptions") || normalizedType.includes("boolean");
 				const options = columnOptions?.[column.fieldName];
@@ -849,21 +1046,21 @@ export const Grid = React.memo((props: GridProps) => {
 				}
 
 				if (isTwoOptions) {
-					const boolOptions = [
-						{ label: "Yes", value: "true" },
-						{ label: "No", value: "false" },
-					];
 					return (
 						<EditingDropdown
 							key={cellKey}
 							initialValue={cellData.value}
-							options={boolOptions}
+							options={[
+								{ label: "Yes", value: "true" },
+								{ label: "No", value: "false" },
+							]}
 							onCommit={(value) => void commitEditCell(cellKey, value)}
 							onCancel={() => cancelEditCell(cellKey)}
 						/>
 					);
 				}
 
+				// Plain text editor
 				return (
 					<EditingTextField
 						key={cellKey}
@@ -874,7 +1071,7 @@ export const Grid = React.memo((props: GridProps) => {
 				);
 			}
 
-			// Per-cell save status icon shown alongside the cell value.
+			// ── Per-cell save status icon (shown at far left of cell value) ───
 			const statusIcon =
 				cellSaveStatus === "saving" ? (
 					<Spinner size={SpinnerSize.xSmall} />
@@ -884,7 +1081,7 @@ export const Grid = React.memo((props: GridProps) => {
 					<Icon iconName="Error" style={{ color: theme.palette.redDark, fontSize: 12 }} />
 				) : null;
 
-			const wrapWithStatus = (content: React.ReactNode) =>
+			const withStatus = (content: React.ReactNode) =>
 				statusIcon ? (
 					<Stack horizontal verticalAlign="center" tokens={{ childrenGap: 4 }}>
 						{statusIcon}
@@ -894,9 +1091,10 @@ export const Grid = React.memo((props: GridProps) => {
 					<>{content}</>
 				);
 
+			// ── Lookup link (read-only or editable) ───────────────────────────
 			const lookupReference = enableLookupLinks ? getLookupReference(item, column.fieldName) : null;
-			if (lookupReference && formattedValue) {
-				return wrapWithStatus(
+			if (!isEditingThisCell && lookupReference && formattedValue) {
+				const linkContent = (
 					<Link
 						onClick={(event) => {
 							event?.preventDefault();
@@ -906,8 +1104,26 @@ export const Grid = React.memo((props: GridProps) => {
 						{formattedValue}
 					</Link>
 				);
+
+				if (canEditThisCell && onSearchLookup) {
+					return (
+						<span
+							onDoubleClick={(event) => {
+								event.preventDefault();
+								event.stopPropagation();
+								beginEditCell(item, column, effectiveDataType, formattedValue);
+							}}
+							style={{ display: "block", width: "100%", minHeight: "1em" }}
+							title="Double-click to edit">
+							{withStatus(linkContent)}
+						</span>
+					);
+				}
+
+				return withStatus(linkContent);
 			}
 
+			// ── Editable plain cell ───────────────────────────────────────────
 			if (canEditThisCell) {
 				return (
 					<span
@@ -918,24 +1134,18 @@ export const Grid = React.memo((props: GridProps) => {
 						}}
 						style={{ cursor: "text", display: "block", width: "100%", minHeight: "1em" }}
 						title="Double-click to edit">
-						{statusIcon ? (
-							<Stack horizontal verticalAlign="center" tokens={{ childrenGap: 4 }}>
-								{statusIcon}
-								<span>{formattedValue}</span>
-							</Stack>
-						) : (
-							formattedValue
-						)}
+						{withStatus(formattedValue)}
 					</span>
 				);
 			}
 
-			return wrapWithStatus(formattedValue);
+			return withStatus(formattedValue);
 		},
 		[
 			beginEditCell,
 			cancelEditCell,
 			commitEditCell,
+			commitLookupCell,
 			editingCells,
 			cellSaveStatuses,
 			columnOptions,
@@ -944,8 +1154,10 @@ export const Grid = React.memo((props: GridProps) => {
 			getLookupReference,
 			isComponentLoading,
 			isInlineEditableDataType,
+			isLookupDataType,
 			itemsLoading,
 			onOpenLookup,
+			onSearchLookup,
 			theme.palette.green,
 			theme.palette.redDark,
 		]
@@ -958,7 +1170,6 @@ export const Grid = React.memo((props: GridProps) => {
 			if (highlightColor && highlightValue) {
 				let indicatorValue: unknown;
 				try {
-					// HighlightIndicator is optional in this fork and may not be bound on all app grids.
 					const itemRecord = props.item as ComponentFramework.PropertyHelper.DataSetApi.EntityRecord;
 					indicatorValue = itemRecord.getValue("HighlightIndicator");
 				} catch {

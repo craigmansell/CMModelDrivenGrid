@@ -19,6 +19,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 	isFullScreen = false;
 	columnOptions: Record<string, { label: string; value: string }[]> = {};
 	private columnOptionsFetchedFor: string | undefined;
+	private entityMetaCache: Record<string, { entitySetName: string; primaryNameAttr: string }> = {};
 
 	setSelectedRecords = (ids: string[]): void => {
 		this.context.parameters.records.setSelectedRecordIds(ids);
@@ -303,6 +304,61 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		this.context.mode.setFullScreen(true);
 	};
 
+	/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
+	private getEntityMeta = async (entityType: string): Promise<{ entitySetName: string; primaryNameAttr: string }> => {
+		if (this.entityMetaCache[entityType]) return this.entityMetaCache[entityType];
+		const utils = this.context.utils as any;
+		const meta = await utils.getEntityMetadata(entityType);
+		const result = {
+			entitySetName: String(meta?.EntitySetName ?? entityType + "s"),
+			primaryNameAttr: String(meta?.PrimaryNameAttribute ?? "name"),
+		};
+		this.entityMetaCache[entityType] = result;
+		return result;
+	};
+	/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
+
+	onSearchLookup = async (entityType: string, searchTerm: string): Promise<{ id: string; name: string }[]> => {
+		try {
+			const { primaryNameAttr } = await this.getEntityMeta(entityType);
+			const safeSearch = searchTerm.trim().replace(/'/g, "''");
+			const filter = safeSearch ? `&$filter=contains(${primaryNameAttr},'${safeSearch}')` : "";
+			const query = `?$select=${primaryNameAttr}&$top=20&$orderby=${primaryNameAttr} asc${filter}`;
+			const results = await this.context.webAPI.retrieveMultipleRecords(entityType, query);
+			return results.entities.map((e) => {
+				// eslint-disable-next-line @typescript-eslint/no-base-to-string
+				const id = String((e as Record<string, unknown>)[`${entityType}id`] ?? (e as Record<string, unknown>).id ?? "");
+				// eslint-disable-next-line @typescript-eslint/no-base-to-string
+				const name = String((e as Record<string, unknown>)[primaryNameAttr] ?? "(unknown)");
+				return { id, name };
+			});
+		} catch {
+			return [];
+		}
+	};
+
+	onUpdateLookupCell = async (
+		recordId: string,
+		columnName: string,
+		targetId: string,
+		targetEntityType: string
+	): Promise<void> => {
+		const entityType = this.context.parameters.records.getTargetEntityType();
+		if (!entityType) throw new Error("Unable to determine target table for inline editing.");
+		try {
+			const { entitySetName } = await this.getEntityMeta(targetEntityType);
+			const updateData: ComponentFramework.WebApi.Entity = {
+				[`${columnName}@odata.bind`]: `/${entitySetName}(${this.normalizeGuid(targetId)})`,
+			};
+			await this.context.webAPI.updateRecord(entityType, this.normalizeGuid(recordId), updateData);
+			this.context.parameters.records.refresh();
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Unable to save the lookup field.";
+			await this.context.navigation.openAlertDialog({ text: message });
+			throw error;
+		}
+	};
+
 	private fetchColumnOptions = async (
 		entityType: string,
 		columns: ComponentFramework.PropertyHelper.DataSetApi.Column[]
@@ -395,6 +451,8 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 				enableLookupLinks: this.context.parameters.EnableLookupLinks.raw ?? true,
 				enableInlineEdit: true,
 				columnOptions: this.columnOptions,
+				onSearchLookup: this.onSearchLookup,
+				onUpdateLookupCell: this.onUpdateLookupCell,
 				setSelectedRecords: this.setSelectedRecords,
 				onNavigate: this.onNavigate,
 				onOpenLookup: this.onOpenLookup,
