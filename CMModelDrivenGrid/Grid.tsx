@@ -1,5 +1,6 @@
 import { useConst, useForceUpdate } from "@fluentui/react-hooks";
 import * as React from "react";
+import * as ReactDOM from "react-dom";
 import { IObjectWithKey, IRenderFunction, SelectionMode } from "@fluentui/react/lib/Utilities";
 import {
 	ConstrainMode,
@@ -219,6 +220,7 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, onSe
 	const [searchTerm, setSearchTerm] = React.useState(initialDisplayValue);
 	const [results, setResults] = React.useState<{ id: string; name: string }[]>([]);
 	const [isSearching, setIsSearching] = React.useState(false);
+	const [dropdownRect, setDropdownRect] = React.useState<DOMRect | null>(null);
 	const committedRef = React.useRef(false);
 	const debounceRef = React.useRef<number | undefined>(undefined);
 	const containerRef = React.useRef<HTMLDivElement>(null);
@@ -238,8 +240,11 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, onSe
 		[onSearch]
 	);
 
-	// Search on mount with the current display value.
+	// Capture position and kick off initial search on mount.
 	React.useEffect(() => {
+		if (containerRef.current) {
+			setDropdownRect(containerRef.current.getBoundingClientRect());
+		}
 		void performSearch(initialDisplayValue);
 		return () => {
 			if (debounceRef.current !== undefined) {
@@ -268,7 +273,7 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, onSe
 		}
 	};
 
-	// Delay cancel so a click on a result item fires before we cancel.
+	// Delay cancel so a mousedown on a result item fires before we cancel.
 	const handleBlur = () => {
 		window.setTimeout(() => {
 			if (!committedRef.current) {
@@ -284,59 +289,66 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, onSe
 		onCommit(id, name);
 	};
 
-	const showDropdown = results.length > 0 || isSearching;
+	const dropdownPortal =
+		dropdownRect !== null &&
+		(results.length > 0 || isSearching) &&
+		ReactDOM.createPortal(
+			<div
+				style={{
+					position: "fixed",
+					top: dropdownRect.bottom,
+					left: dropdownRect.left,
+					minWidth: Math.max(dropdownRect.width, 200),
+					maxHeight: 200,
+					overflowY: "auto",
+					background: "white",
+					border: "1px solid #ccc",
+					boxShadow: "0 4px 8px rgba(0,0,0,0.16)",
+					zIndex: 1000000,
+					borderRadius: 2,
+				}}
+			>
+				{isSearching && (
+					<Stack horizontal verticalAlign="center" tokens={{ childrenGap: 6 }} style={{ padding: "6px 8px" }}>
+						<Spinner size={SpinnerSize.xSmall} />
+						<Text variant="small">Searching...</Text>
+					</Stack>
+				)}
+				{!isSearching && results.length === 0 && (
+					<Text variant="small" style={{ padding: "6px 8px", display: "block", color: "#666" }}>
+						No results found
+					</Text>
+				)}
+				{!isSearching &&
+					results.map((r) => (
+						<ActionButton
+							key={r.id}
+							styles={{ root: { width: "100%", textAlign: "left", height: 28, paddingLeft: 8 } }}
+							onMouseDown={(e) => e.preventDefault()}
+							onClick={() => handleSelect(r.id, r.name)}
+						>
+							{r.name}
+						</ActionButton>
+					))}
+			</div>,
+			document.body
+		);
 
 	return (
-		<div ref={containerRef}>
-			<TextField
-				autoFocus
-				borderless
-				value={searchTerm}
-				styles={{ root: { width: "100%" }, fieldGroup: { minHeight: 24 } }}
-				onChange={handleChange}
-				onKeyDown={handleKeyDown}
-				onBlur={handleBlur}
-			/>
-			{showDropdown && containerRef.current && (
-				<Callout
-					target={containerRef.current}
-					directionalHint={DirectionalHint.bottomLeftEdge}
-					isBeakVisible={false}
-					gapSpace={0}
-					calloutMaxHeight={200}
-					setInitialFocus={false}
-					styles={{ calloutMain: { minWidth: 200 } }}
-					onDismiss={() => {
-						if (!committedRef.current) {
-							committedRef.current = true;
-							onCancel();
-						}
-					}}
-				>
-					{isSearching && (
-						<Stack horizontal verticalAlign="center" tokens={{ childrenGap: 6 }} style={{ padding: "6px 8px" }}>
-							<Spinner size={SpinnerSize.xSmall} />
-							<Text variant="small">Searching...</Text>
-						</Stack>
-					)}
-					{!isSearching && results.length === 0 && (
-						<Text variant="small" style={{ padding: "6px 8px", display: "block", color: "#666" }}>
-							No results found
-						</Text>
-					)}
-					{!isSearching &&
-						results.map((r) => (
-							<ActionButton
-								key={r.id}
-								styles={{ root: { width: "100%", textAlign: "left", height: 28, paddingLeft: 8 } }}
-								onClick={() => handleSelect(r.id, r.name)}
-							>
-								{r.name}
-							</ActionButton>
-						))}
-				</Callout>
-			)}
-		</div>
+		<>
+			<div ref={containerRef}>
+				<TextField
+					autoFocus
+					borderless
+					value={searchTerm}
+					styles={{ root: { width: "100%" }, fieldGroup: { minHeight: 24 } }}
+					onChange={handleChange}
+					onKeyDown={handleKeyDown}
+					onBlur={handleBlur}
+				/>
+			</div>
+			{dropdownPortal}
+		</>
 	);
 };
 
