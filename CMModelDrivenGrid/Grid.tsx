@@ -716,6 +716,24 @@ export const Grid = React.memo((props: GridProps) => {
 	const displayItems = React.useMemo(() => [...items], [items, editingCells, cellSaveStatuses, cellSelection]);
 	displayItemsRef.current = displayItems;
 
+	// Clear local loading state whenever the PCF dataset finishes loading OR records update.
+	// This prevents the overlay getting permanently stuck if the filter result is identical
+	// to the current data (records reference unchanged, items useMemo never re-runs).
+	const prevItemsLoadingRef = React.useRef(false);
+	React.useEffect(() => {
+		const wasLoading = prevItemsLoadingRef.current;
+		prevItemsLoadingRef.current = itemsLoading;
+		if (wasLoading && !itemsLoading) {
+			setIsLoading(false);
+		}
+	}, [itemsLoading]);
+
+	// Also clear local loading when records change (belt-and-braces for the fast-path case
+	// where PCF never sets dataset.loading=true because it responds before the next render).
+	React.useEffect(() => {
+		setIsLoading(false);
+	}, [records, sortedRecordIds]);
+
 	// Global mouse-up ends drag; Ctrl+C copies selected range as TSV.
 	React.useEffect(() => {
 		const onMouseUp = () => { isDraggingRef.current = false; };
