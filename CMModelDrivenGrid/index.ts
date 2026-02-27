@@ -280,7 +280,16 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 	): void => {
 		const filtering = this.context.parameters.records.filtering;
 		const currentFilter = filtering.getFilter();
-		const nextConditions = (currentFilter?.conditions ?? []).filter((condition) => condition.attributeName !== name);
+
+		// For lookup columns, conditions are stored under the "{name}name" companion attribute
+		// (the display-name virtual field), so we must clear both variants.
+		const columnMeta = this.context.parameters.records.columns.find((c) => c.name === name);
+		const isLookup = columnMeta ? /lookup|owner/i.test(columnMeta.dataType) : false;
+		const filterAttributeName = isLookup ? `${name}name` : name;
+
+		const nextConditions = (currentFilter?.conditions ?? []).filter(
+			(condition) => condition.attributeName !== name && condition.attributeName !== `${name}name`
+		);
 
 		if (mode === "clear") {
 			if (nextConditions.length === 0) {
@@ -397,7 +406,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 			}
 
 			nextConditions.push({
-				attributeName: name,
+				attributeName: filterAttributeName,
 				conditionOperator:
 					conditionOperator as ComponentFramework.PropertyHelper.DataSetApi.Types.ConditionOperator,
 				value: mappedValue,

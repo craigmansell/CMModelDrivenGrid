@@ -857,13 +857,12 @@ export const Grid = React.memo((props: GridProps) => {
 	}, []);
 
 	const handleFilterByMouseEnter = React.useCallback(() => {
-		if (isLookupDataType((filterColumn?.data as ComponentFramework.PropertyHelper.DataSetApi.Column)?.dataType ?? "")) return;
 		if (filterByHoverTimerRef.current !== undefined) return; // timer already running
 		filterByHoverTimerRef.current = window.setTimeout(() => {
 			filterByHoverTimerRef.current = undefined;
 			setFilterView("filterBy");
 		}, 1000);
-	}, [filterColumn, isLookupDataType]);
+	}, []);
 
 	const handleMainMenuMouseEnter = React.useCallback(() => {
 		if (filterByHoverTimerRef.current !== undefined) {
@@ -886,7 +885,9 @@ export const Grid = React.memo((props: GridProps) => {
 				)
 			).sort((left, right) => left.localeCompare(right));
 
-			const existingCondition = filtering?.conditions?.find((condition) => condition.attributeName === column.key);
+			const existingCondition = filtering?.conditions?.find(
+			(condition) => condition.attributeName === column.key || condition.attributeName === column.key + "name"
+		);
 			const filterByState = deriveFilterByState(existingCondition);
 			let initialCheckedValues = [...uniqueValues];
 
@@ -1482,7 +1483,6 @@ export const Grid = React.memo((props: GridProps) => {
 									text="Filter by"
 									iconProps={{ iconName: "Filter" }}
 									menuIconProps={{ iconName: "ChevronRight" }}
-									disabled={isLookupDataType((filterColumn?.data as ComponentFramework.PropertyHelper.DataSetApi.Column)?.dataType ?? "")}
 									onMouseEnter={handleFilterByMouseEnter}
 									onClick={() => {
 										if (filterByHoverTimerRef.current !== undefined) {
