@@ -20,6 +20,12 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 	columnOptions: Record<string, { label: string; value: string }[]> = {};
 	private columnOptionsFetchedFor: string | undefined;
 	private entityMetaCache: Record<string, { entitySetName: string; primaryNameAttr: string }> = {};
+	// Maps source-entity column logical name → Dataverse navigation property name.
+	// Populated eagerly from full entity metadata at updateView time.
+	private lookupNavPropertyMap: Record<string, string> = {};
+	private lookupNavPropertyFetchedFor: string | undefined;
+	// Stored promise so onUpdateLookupCell can await map population before saving.
+	private lookupNavPropertyFetchPromise: Promise<void> | undefined;
 
 	setSelectedRecords = (ids: string[]): void => {
 		this.context.parameters.records.setSelectedRecordIds(ids);
@@ -32,6 +38,130 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 	};
 
 	private normalizeGuid = (id: string): string => id.replace(/[{}]/g, "");
+
+	private isInvalidPropertyPayloadError = (error: unknown): boolean => {
+		const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+		return (
+			message.includes("invalid property") ||
+			message.includes("undeclared property") ||
+			message.includes("does not exist on type")
+		);
+	};
+
+	private isAliasedDatasetColumn = (column: ComponentFramework.PropertyHelper.DataSetApi.Column): boolean => {
+		const alias = (column as { alias?: string }).alias;
+		return typeof alias === "string" && alias.length > 0 && alias !== column.name;
+	};
+
+	private getEditableDatasetColumn = (columnName: string): ComponentFramework.PropertyHelper.DataSetApi.Column => {
+		const column = this.context.parameters.records.columns.find((c) => c.name === columnName);
+		if (!column) {
+			throw new Error(`Column '${columnName}' is not available for inline editing.`);
+		}
+		if (this.isAliasedDatasetColumn(column)) {
+			throw new Error("This column comes from a related table/view and cannot be edited inline.");
+		}
+		return column;
+	};
+
+	private resolveLookupBindNames = async (
+		entityType: string,
+		columnName: string,
+		targetEntityType?: string
+	): Promise<string[]> => {
+		const bindCandidates = new Set<string>();
+		const normalizedTarget = typeof targetEntityType === "string" ? targetEntityType.trim() : "";
+		const normalizedTargetLower = normalizedTarget.toLowerCase();
+
+		const addCandidate = (candidate: unknown): void => {
+			if (typeof candidate !== "string") {
+				return;
+			}
+			const trimmed = candidate.trim();
+			if (trimmed.length > 0) {
+				bindCandidates.add(trimmed);
+			}
+		};
+
+		const addPolymorphicCandidate = (baseName: string): void => {
+			if (!normalizedTarget) {
+				return;
+			}
+			const trimmedBase = baseName.trim();
+			if (trimmedBase.length === 0) {
+				return;
+			}
+			const lowerBase = trimmedBase.toLowerCase();
+			if (lowerBase.endsWith(`_${normalizedTargetLower}`)) {
+				return;
+			}
+			addCandidate(`${trimmedBase}_${normalizedTarget}`);
+			if (normalizedTargetLower !== normalizedTarget) {
+				addCandidate(`${trimmedBase}_${normalizedTargetLower}`);
+			}
+		};
+
+		const baseCandidates = [columnName];
+		if (!columnName.endsWith("id")) {
+			baseCandidates.push(`${columnName}id`);
+		} else if (columnName.length > 2) {
+			baseCandidates.push(columnName.slice(0, -2));
+		}
+
+		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
+		try {
+			const utils = this.context.utils as any;
+			const metadata = await utils.getEntityMetadata(entityType, [columnName]);
+			const attributeMeta =
+				typeof metadata?.Attributes?.getByName === "function"
+					? metadata.Attributes.getByName(columnName)
+					: metadata?.[columnName];
+
+			addCandidate(attributeMeta?.NavigationPropertyName);
+			addCandidate(attributeMeta?.SchemaName);
+			addCandidate(attributeMeta?.LogicalName);
+			addCandidate(attributeMeta?.ODataName);
+
+			const relationships: any[] = Array.isArray(metadata?.ManyToOneRelationships)
+				? metadata.ManyToOneRelationships
+				: [];
+
+			const matchingRelationships = relationships.filter((relationship) => {
+				const referencingAttribute = relationship?.ReferencingAttribute;
+				if (typeof referencingAttribute !== "string") {
+					return false;
+				}
+				return referencingAttribute.toLowerCase() === columnName.toLowerCase();
+			});
+
+			const getNavName = (relationship: any): unknown =>
+				relationship?.ReferencingEntityNavigationPropertyName ?? relationship?.NavigationPropertyName;
+
+			const getReferencedEntity = (relationship: any): string => {
+				const candidate = relationship?.ReferencedEntity ?? relationship?.ReferencedEntityName;
+				return typeof candidate === "string" ? candidate : "";
+			};
+
+			if (normalizedTarget) {
+				matchingRelationships
+					.filter((relationship) => getReferencedEntity(relationship).toLowerCase() === normalizedTargetLower)
+					.forEach((relationship) => addCandidate(getNavName(relationship)));
+			}
+
+			matchingRelationships.forEach((relationship) => addCandidate(getNavName(relationship)));
+		} catch {
+			// Ignore metadata resolution failures and rely on fallback candidates.
+		}
+		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
+
+		// Fall back to common naming conventions.
+		baseCandidates.forEach(addCandidate);
+
+		// Polymorphic lookups (customer/regarding/custom polymorphic) require a target-type-suffixed bind property.
+		baseCandidates.forEach((candidate) => addPolymorphicCandidate(candidate));
+
+		return Array.from(bindCandidates);
+	};
 
 	private parseInlineEditValue = (value: string, dataType: string): string | number | boolean | null => {
 		const trimmedValue = value.trim();
@@ -100,9 +230,10 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 				throw new Error("Unable to determine target table for inline editing.");
 			}
 
-			const parsedValue = this.parseInlineEditValue(value, dataType);
+			const editableColumn = this.getEditableDatasetColumn(columnName);
+			const parsedValue = this.parseInlineEditValue(value, editableColumn.dataType || dataType);
 			const updateData: ComponentFramework.WebApi.Entity = {
-				[columnName]: parsedValue,
+				[editableColumn.name]: parsedValue,
 			};
 
 			await this.context.webAPI.updateRecord(entityType, this.normalizeGuid(recordId), updateData);
@@ -307,18 +438,27 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 	/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
 	private getEntityMeta = async (entityType: string): Promise<{ entitySetName: string; primaryNameAttr: string }> => {
 		if (this.entityMetaCache[entityType]) return this.entityMetaCache[entityType];
+
+		// For custom entities (publisher prefix like "cm_"), Dataverse always names the
+		// primary name field "${prefix}_name" — e.g. cm_componentoption → cm_name.
+		const publisherPrefix = entityType.includes("_") ? entityType.split("_")[0] : "";
+		const conventionName = publisherPrefix ? `${publisherPrefix}_name` : "name";
+
 		try {
 			const utils = this.context.utils as any;
 			const meta = await utils.getEntityMetadata(entityType);
+			const metaEntitySet = typeof meta?.EntitySetName === "string" ? meta.EntitySetName : "";
+			const metaPrimaryName = typeof meta?.PrimaryNameAttribute === "string" ? meta.PrimaryNameAttribute : "";
 			const result = {
-				entitySetName: String(meta?.EntitySetName ?? `${entityType}s`),
-				primaryNameAttr: String(meta?.PrimaryNameAttribute ?? "name"),
+				entitySetName: metaEntitySet !== "" ? metaEntitySet : `${entityType}s`,
+				// If metadata returns "name" for a custom entity, the convention is more reliable.
+				primaryNameAttr: metaPrimaryName && !(metaPrimaryName === "name" && publisherPrefix) ? metaPrimaryName : conventionName,
 			};
 			this.entityMetaCache[entityType] = result;
 			return result;
 		} catch {
 			// Fall back to naming conventions if metadata fetch fails.
-			const fallback = { entitySetName: `${entityType}s`, primaryNameAttr: "name" };
+			const fallback = { entitySetName: `${entityType}s`, primaryNameAttr: conventionName };
 			this.entityMetaCache[entityType] = fallback;
 			return fallback;
 		}
@@ -327,7 +467,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 
 	onSearchLookup = async (entityType: string, searchTerm: string): Promise<{ id: string; name: string }[]> => {
 		const { primaryNameAttr } = await this.getEntityMeta(entityType);
-		const safeSearch = searchTerm.trim().replace(/'/g, "''");
+		const safeSearch = (searchTerm ?? "").trim().replace(/'/g, "''");
 		const filter = safeSearch ? `&$filter=contains(${primaryNameAttr},'${safeSearch}')` : "";
 		const query = `?$select=${primaryNameAttr}&$top=20&$orderby=${primaryNameAttr} asc${filter}`;
 		const results = await this.context.webAPI.retrieveMultipleRecords(entityType, query);
@@ -349,16 +489,122 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		const entityType = this.context.parameters.records.getTargetEntityType();
 		if (!entityType) throw new Error("Unable to determine target table for inline editing.");
 		try {
-			const { entitySetName } = await this.getEntityMeta(targetEntityType);
-			const updateData: ComponentFramework.WebApi.Entity = {
-				[`${columnName}@odata.bind`]: `/${entitySetName}(${this.normalizeGuid(targetId)})`,
-			};
-			await this.context.webAPI.updateRecord(entityType, this.normalizeGuid(recordId), updateData);
-			this.context.parameters.records.refresh();
+			const editableColumn = this.getEditableDatasetColumn(columnName);
+
+			// Ensure the nav property map is fully populated before building candidates.
+			if (this.lookupNavPropertyFetchPromise) {
+				await this.lookupNavPropertyFetchPromise;
+			}
+
+			// Use the eagerly-fetched nav property map first (most reliable).
+			// Fall back to the runtime metadata resolver for any remaining candidates.
+			const prebuiltNavProp = this.lookupNavPropertyMap[editableColumn.name.toLowerCase()];
+			const isClear = targetId === "";
+			const entitySetName = isClear ? "" : (await this.getEntityMeta(targetEntityType)).entitySetName;
+			const runtimeCandidates = await this.resolveLookupBindNames(entityType, editableColumn.name, targetEntityType);
+			const bindCandidates = prebuiltNavProp
+				? [prebuiltNavProp, ...runtimeCandidates.filter((c) => c !== prebuiltNavProp)]
+				: runtimeCandidates;
+
+			console.info(
+				`[CMModelDrivenGrid] onUpdateLookupCell: column=${columnName}, prebuiltNavProp=${prebuiltNavProp ?? "(none)"},`,
+				`candidates=[${bindCandidates.join(", ")}], entitySetName=${entitySetName}, targetId=${targetId}`
+			);
+			console.info(`[CMModelDrivenGrid] lookupNavPropertyMap:`, JSON.stringify(this.lookupNavPropertyMap));
+
+			let lastError: unknown;
+			for (const bindName of bindCandidates) {
+				try {
+					const updateData: ComponentFramework.WebApi.Entity = isClear
+						? { [`${bindName}@odata.bind`]: null }
+						: { [`${bindName}@odata.bind`]: `/${entitySetName}(${this.normalizeGuid(targetId)})` };
+					console.info(`[CMModelDrivenGrid] Trying bind: ${bindName}@odata.bind (clear=${isClear})`);
+					await this.context.webAPI.updateRecord(entityType, this.normalizeGuid(recordId), updateData);
+					console.info(`[CMModelDrivenGrid] SUCCESS with bind: ${bindName}@odata.bind`);
+					this.context.parameters.records.refresh();
+					return;
+				} catch (error) {
+					console.info(`[CMModelDrivenGrid] FAILED with bind: ${bindName}@odata.bind`, error);
+					lastError = error;
+					// Always try the next candidate — PCF wraps OData errors in opaque
+					// objects so we cannot reliably detect "undeclared property" from
+					// the error message alone.
+				}
+			}
+
+			if (lastError instanceof Error) {
+				throw lastError;
+			}
+			throw new Error("Unable to save the lookup field.");
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Unable to save the lookup field.";
 			await this.context.navigation.openAlertDialog({ text: message });
 			throw error;
+		}
+	};
+
+	private fetchLookupNavProperties = async (
+		entityType: string,
+		columns: ComponentFramework.PropertyHelper.DataSetApi.Column[]
+	): Promise<void> => {
+		const lookupCols = columns.filter((col) => {
+			const t = col.dataType.toLowerCase();
+			return t.includes("lookup") || t.includes("owner");
+		});
+		if (lookupCols.length === 0) return;
+
+		// PCF's getEntityMetadata does NOT return ManyToOneRelationships.
+		// Query the Dataverse Web API metadata endpoint directly instead.
+		try {
+			const baseUrl = window.location.origin;
+			const url =
+				`${baseUrl}/api/data/v9.0/EntityDefinitions(LogicalName='${entityType}')/ManyToOneRelationships` +
+				`?$select=ReferencingAttribute,ReferencingEntityNavigationPropertyName,ReferencedEntity`;
+
+			const response = await fetch(url, {
+				headers: {
+					Accept: "application/json",
+					"OData-MaxVersion": "4.0",
+					"OData-Version": "4.0",
+				},
+				credentials: "include",
+			});
+
+			if (!response.ok) {
+				console.info(`[CMModelDrivenGrid] fetchLookupNavProperties: HTTP ${response.status} for ${entityType}`);
+				return;
+			}
+
+			const data = await response.json() as {
+				value: {
+					ReferencingAttribute: string;
+					ReferencingEntityNavigationPropertyName: string;
+					ReferencedEntity: string;
+				}[];
+			};
+
+			const lookupColNames = new Set(lookupCols.map((c) => c.name.toLowerCase()));
+
+			console.info(
+				`[CMModelDrivenGrid] fetchLookupNavProperties: entityType=${entityType},`,
+				`relationship count=${data.value?.length ?? 0},`,
+				`lookup columns=${lookupCols.map((c) => c.name).join(", ")}`
+			);
+
+			(data.value ?? []).forEach((rel) => {
+				const attr = (rel.ReferencingAttribute ?? "").toLowerCase();
+				const navProp = rel.ReferencingEntityNavigationPropertyName ?? "";
+				if (attr && navProp && lookupColNames.has(attr)) {
+					if (!this.lookupNavPropertyMap[attr]) {
+						this.lookupNavPropertyMap[attr] = navProp;
+						console.info(`[CMModelDrivenGrid] Mapped lookup: ${attr} → nav property: ${navProp}`);
+					}
+				}
+			});
+
+			console.info(`[CMModelDrivenGrid] lookupNavPropertyMap after fetch:`, JSON.stringify(this.lookupNavPropertyMap));
+		} catch (err) {
+			console.info(`[CMModelDrivenGrid] fetchLookupNavProperties error:`, err);
 		}
 	};
 
@@ -530,6 +776,11 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		if (entityType && entityType !== this.columnOptionsFetchedFor) {
 			this.columnOptionsFetchedFor = entityType;
 			void this.fetchColumnOptions(entityType, dataset.columns);
+		}
+		if (entityType && entityType !== this.lookupNavPropertyFetchedFor) {
+			this.lookupNavPropertyFetchedFor = entityType;
+			this.lookupNavPropertyMap = {};
+			this.lookupNavPropertyFetchPromise = this.fetchLookupNavProperties(entityType, dataset.columns);
 		}
 
 		this.renderGrid();

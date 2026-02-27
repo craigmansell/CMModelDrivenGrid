@@ -273,15 +273,30 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, onSe
 			event.preventDefault();
 			committedRef.current = true;
 			onCancel();
+		} else if (event.key === "Tab") {
+			event.preventDefault();
+			if (results.length > 0) {
+				handleSelect(results[0].id, results[0].name);
+			} else if (searchTerm.trim() === "") {
+				handleSelect("", ""); // commit null
+			} else {
+				committedRef.current = true;
+				onCancel();
+			}
 		}
 	};
 
 	// Delay cancel so a mousedown on a result item fires before we cancel.
 	const handleBlur = () => {
+		const termAtBlur = searchTerm;
 		window.setTimeout(() => {
 			if (!committedRef.current) {
 				committedRef.current = true;
-				onCancel();
+				if (termAtBlur.trim() === "") {
+					onCommit("", ""); // empty field → save as null
+				} else {
+					onCancel(); // non-empty but nothing selected → revert
+				}
 			}
 		}, 200);
 	};
@@ -311,6 +326,7 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, onSe
 					borderRadius: 2,
 				}}
 			>
+				{/* Clear button moved inline next to the text field */}
 				{isSearching && (
 					<Stack horizontal verticalAlign="center" tokens={{ childrenGap: 6 }} style={{ padding: "6px 8px" }}>
 						<Spinner size={SpinnerSize.xSmall} />
@@ -345,17 +361,16 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, onSe
 
 	return (
 		<>
-			<div ref={containerRef}>
+			<div ref={containerRef} style={{ display: "flex", alignItems: "center" }}>
 				<TextField
 					autoFocus
 					borderless
 					value={searchTerm}
-					styles={{ root: { width: "100%" }, fieldGroup: { minHeight: 24 } }}
+					styles={{ root: { flex: 1, minWidth: 0 }, fieldGroup: { minHeight: 24 } }}
 					onChange={handleChange}
 					onKeyDown={handleKeyDown}
 					onBlur={handleBlur}
-				/>
-			</div>
+				/>			</div>
 			{dropdownPortal}
 		</>
 	);
@@ -436,7 +451,7 @@ export const Grid = React.memo((props: GridProps) => {
 	const [allFilterValues, setAllFilterValues] = React.useState<string[]>([]);
 	const [checkedFilterValues, setCheckedFilterValues] = React.useState<string[]>([]);
 	const [searchText, setSearchText] = React.useState<string>("");
-	const [filterByTarget, setFilterByTarget] = React.useState<HTMLElement | undefined>();
+	const [filterView, setFilterView] = React.useState<"main" | "filterBy">("main");
 	const [filterByMode, setFilterByMode] = React.useState<FilterByMode>("equals");
 	const [filterByValue, setFilterByValue] = React.useState<string>("");
 
@@ -454,6 +469,16 @@ export const Grid = React.memo((props: GridProps) => {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 		return () => { cellSaveTimeoutsRef.current.forEach((id) => window.clearTimeout(id)); };
 	}, []);
+
+	// ── Excel-like cell range selection ──────────────────────────────────
+	interface CellCoord { row: number; col: number; }
+	interface CellSelection { anchor: CellCoord; head: CellCoord; }
+	const [cellSelection, setCellSelection] = React.useState<CellSelection | null>(null);
+	const cellSelectionRef = React.useRef<CellSelection | null>(null);
+	const isDraggingRef = React.useRef(false);
+	const cellMouseDownRef = React.useRef(false);
+	const gridColumnsRef = React.useRef<IColumn[]>([]);
+	const displayItemsRef = React.useRef<DataSet[]>([]);
 
 	const setCellTransientStatus = React.useCallback((cellKey: string, status: "saved" | "failed", timeoutMs: number) => {
 		const existing = cellSaveTimeoutsRef.current.get(cellKey);
@@ -553,6 +578,21 @@ export const Grid = React.memo((props: GridProps) => {
 			if (isLookupDataType(dataType)) {
 				const ref = getLookupReference(item, column.key);
 				lookupEntityType = ref?.entityType;
+				// If the cell is empty (no existing ref), fall back to the column's declared targets.
+				if (!lookupEntityType) {
+					const pcfCol = column.data as { targets?: string[] } | undefined;
+					lookupEntityType = pcfCol?.targets?.[0];
+				}
+				// Last resort: scan loaded rows for any non-null ref on the same column.
+				if (!lookupEntityType) {
+					for (const otherItem of displayItemsRef.current) {
+						const otherRef = getLookupReference(otherItem, column.key);
+						if (otherRef?.entityType) {
+							lookupEntityType = otherRef.entityType;
+							break;
+						}
+					}
+				}
 				// Always use the formatted display value for lookups (the raw value is an object).
 				initialValue = formattedValue;
 			}
@@ -586,6 +626,8 @@ export const Grid = React.memo((props: GridProps) => {
 		async (cellKey: string, finalValue: string) => {
 			const current = editingCellsRef.current.get(cellKey);
 			if (!current) return;
+			// Lookup fields must be saved via commitLookupCell — never via plain text update.
+			if (isLookupDataType(current.dataType)) return;
 
 			setEditingCells((prev) => {
 				const next = new Map(prev);
@@ -614,7 +656,7 @@ export const Grid = React.memo((props: GridProps) => {
 				setCellTransientStatus(cellKey, "failed", 4000);
 			}
 		},
-		[onUpdateCell, setCellTransientStatus]
+		[isLookupDataType, onUpdateCell, setCellTransientStatus]
 	);
 
 	const commitLookupCell = React.useCallback(
@@ -667,8 +709,60 @@ export const Grid = React.memo((props: GridProps) => {
 		return Object.values(records).filter((record): record is DataSet => record !== undefined);
 	}, [records, sortedRecordIds, setIsLoading]);
 
+	// cellSelection is included so the List component (which only re-renders pages when `items`
+	// changes reference) picks up the updated onRenderItemColumn selection styles on every click/drag.
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	const displayItems = React.useMemo(() => [...items], [items, editingCells, cellSaveStatuses]);
+	const displayItems = React.useMemo(() => [...items], [items, editingCells, cellSaveStatuses, cellSelection]);
+	displayItemsRef.current = displayItems;
+
+	// Global mouse-up ends drag; Ctrl+C copies selected range as TSV.
+	React.useEffect(() => {
+		const onMouseUp = () => { isDraggingRef.current = false; };
+		const onMouseDownOutside = () => {
+			if (cellMouseDownRef.current) {
+				cellMouseDownRef.current = false;
+				return;
+			}
+			// Don't disturb displayItems while a cell is being edited — re-rendering
+			// the List would remount the active editor (killing in-progress searches).
+			if (editingCellsRef.current.size > 0) return;
+			// Click was outside any cell – clear the selection.
+			cellSelectionRef.current = null;
+			setCellSelection(null);
+		};
+		const onKeyDown = (e: KeyboardEvent) => {
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+				const sel = cellSelectionRef.current;
+				if (!sel) return;
+				const { anchor, head } = sel;
+				const minRow = Math.min(anchor.row, head.row);
+				const maxRow = Math.max(anchor.row, head.row);
+				const minCol = Math.min(anchor.col, head.col);
+				const maxCol = Math.max(anchor.col, head.col);
+				const cols = gridColumnsRef.current.slice(minCol, maxCol + 1);
+				const rows = displayItemsRef.current.slice(minRow, maxRow + 1);
+				const tsv = rows
+					.map((row) =>
+						cols
+							.map((col) => {
+								try { return row.getFormattedValue(col.fieldName ?? col.key) ?? ''; }
+								catch { return ''; }
+							})
+							.join('\t')
+					)
+					.join('\r\n');
+				void navigator.clipboard.writeText(tsv);
+			}
+		};
+		document.addEventListener('mouseup', onMouseUp);
+		document.addEventListener('keydown', onKeyDown);
+		document.addEventListener('mousedown', onMouseDownOutside);
+		return () => {
+			document.removeEventListener('mouseup', onMouseUp);
+			document.removeEventListener('keydown', onKeyDown);
+			document.removeEventListener('mousedown', onMouseDownOutside);
+		};
+	}, []);
 
 	const isFilterValueRequired = React.useCallback((mode: FilterByMode): boolean => {
 		return mode !== "containsData" && mode !== "doesNotContainData";
@@ -731,7 +825,7 @@ export const Grid = React.memo((props: GridProps) => {
 	const onFilterDismiss = React.useCallback(() => {
 		setFilterColumn(undefined);
 		setFilterTarget(undefined);
-		setFilterByTarget(undefined);
+		setFilterView("main");
 		setAllFilterValues([]);
 		setCheckedFilterValues([]);
 		setSearchText("");
@@ -773,6 +867,7 @@ export const Grid = React.memo((props: GridProps) => {
 
 			setFilterColumn(column);
 			setFilterTarget(target);
+			setFilterView("main");
 			setAllFilterValues(uniqueValues);
 			setCheckedFilterValues(initialCheckedValues.filter((value) => uniqueValues.includes(value)));
 			setSearchText("");
@@ -782,13 +877,6 @@ export const Grid = React.memo((props: GridProps) => {
 		[blankValueLabel, deriveFilterByState, filtering?.conditions, items]
 	);
 
-	const openFilterByPopup = React.useCallback((target: HTMLElement) => {
-		setFilterByTarget(target);
-	}, []);
-
-	const closeFilterByPopup = React.useCallback(() => {
-		setFilterByTarget(undefined);
-	}, []);
 
 	const applyFilterBy = React.useCallback(() => {
 		if (!filterColumn) {
@@ -978,6 +1066,7 @@ export const Grid = React.memo((props: GridProps) => {
 				} as IColumn;
 			});
 	}, [columns, sorting, filtering?.conditions, onColumnContextMenu, onColumnClick]);
+	gridColumnsRef.current = gridColumns;
 
 	const rootContainerStyle: React.CSSProperties = React.useMemo(() => {
 		return {
@@ -1010,6 +1099,8 @@ export const Grid = React.memo((props: GridProps) => {
 						: typeof rawCellValue === "boolean"
 							? "twooptions"
 							: "");
+			const alias = (columnMetadata as { alias?: string } | undefined)?.alias;
+			const isAliasedColumn = typeof alias === "string" && alias.length > 0 && alias !== column.key;
 			const recordId = item.getRecordId();
 			const cellKey = `${recordId}-${column.fieldName}`;
 			const isEditingThisCell = editingCells.has(cellKey);
@@ -1026,10 +1117,64 @@ export const Grid = React.memo((props: GridProps) => {
 
 			const canEditThisCell =
 				enableInlineEdit &&
+				!isAliasedColumn &&
 				!itemsLoading &&
 				!isComponentLoading &&
 				((isPrimitiveRawValue || (!!effectiveDataType && isInlineEditableDataType(effectiveDataType))) ||
 					(isLookup && !!onSearchLookup));
+
+			// ── Excel-like cell selection ─────────────────────────────────────
+			const rowIndex = _index ?? 0;
+			const colIndex = gridColumns.findIndex((c) => c.key === column.key);
+			// Use cellSelection state (not ref) here so this callback re-evaluates on selection changes.
+			const sel = cellSelection;
+			const isInSelection = !!(sel &&
+				rowIndex >= Math.min(sel.anchor.row, sel.head.row) &&
+				rowIndex <= Math.max(sel.anchor.row, sel.head.row) &&
+				colIndex >= Math.min(sel.anchor.col, sel.head.col) &&
+				colIndex <= Math.max(sel.anchor.col, sel.head.col));
+			const isTopEdge    = isInSelection && !!sel && rowIndex === Math.min(sel.anchor.row, sel.head.row);
+			const isBottomEdge = isInSelection && !!sel && rowIndex === Math.max(sel.anchor.row, sel.head.row);
+			const isLeftEdge   = isInSelection && !!sel && colIndex === Math.min(sel.anchor.col, sel.head.col);
+			const isRightEdge  = isInSelection && !!sel && colIndex === Math.max(sel.anchor.col, sel.head.col);
+
+			const handleCellMouseDown = (e: React.MouseEvent) => {
+				cellMouseDownRef.current = true;
+				if (isEditingThisCell) return;
+				if (e.shiftKey && cellSelectionRef.current) {
+					const updated = { anchor: cellSelectionRef.current.anchor, head: { row: rowIndex, col: colIndex } };
+					cellSelectionRef.current = updated;
+					setCellSelection(updated);
+				} else {
+					const newSel = { anchor: { row: rowIndex, col: colIndex }, head: { row: rowIndex, col: colIndex } };
+					cellSelectionRef.current = newSel;
+					setCellSelection(newSel);
+					isDraggingRef.current = true;
+				}
+			};
+
+			const handleCellMouseEnter = () => {
+				if (!isDraggingRef.current || isEditingThisCell) return;
+				const current = cellSelectionRef.current;
+				if (!current) return;
+				const updated = { ...current, head: { row: rowIndex, col: colIndex } };
+				cellSelectionRef.current = updated;
+				setCellSelection(updated);
+			};
+
+			const cellOverlay = isInSelection ? (
+				<div style={{
+					position: 'absolute',
+					top: 0, right: 0, bottom: 0, left: 0,
+					backgroundColor: 'rgba(0, 120, 212, 0.10)',
+					borderTop:    isTopEdge    ? '2px solid #0078d4' : '1px solid rgba(0,120,212,0.25)',
+					borderBottom: isBottomEdge ? '2px solid #0078d4' : '1px solid rgba(0,120,212,0.25)',
+					borderLeft:   isLeftEdge   ? '2px solid #0078d4' : '1px solid rgba(0,120,212,0.25)',
+					borderRight:  isRightEdge  ? '2px solid #0078d4' : '1px solid rgba(0,120,212,0.25)',
+					pointerEvents: 'none',
+					boxSizing: 'border-box',
+				}} />
+			) : null;
 
 			// ── Active editor ──────────────────────────────────────────────────
 			if (isEditingThisCell) {
@@ -1114,6 +1259,9 @@ export const Grid = React.memo((props: GridProps) => {
 
 			// ── Lookup link (read-only or editable) ───────────────────────────
 			const lookupReference = enableLookupLinks ? getLookupReference(item, column.fieldName) : null;
+
+			let innerContent: React.ReactNode;
+
 			if (!isEditingThisCell && lookupReference && formattedValue) {
 				const linkContent = (
 					<Link
@@ -1127,40 +1275,45 @@ export const Grid = React.memo((props: GridProps) => {
 				);
 
 				if (canEditThisCell && onSearchLookup) {
-					return (
-						<span
-							onDoubleClick={(event) => {
-								event.preventDefault();
-								event.stopPropagation();
-								beginEditCell(item, column, effectiveDataType, formattedValue);
-							}}
-							style={{ display: "block", width: "100%", minHeight: "1em" }}
-							title="Double-click to edit">
-							{withStatus(linkContent)}
-						</span>
-					);
+					innerContent = withStatus(linkContent);
+				} else {
+					innerContent = withStatus(linkContent);
 				}
-
-				return withStatus(linkContent);
+			} else if (canEditThisCell) {
+				// ── Editable plain cell ───────────────────────────────────────
+				innerContent = withStatus(formattedValue);
+			} else {
+				innerContent = withStatus(formattedValue);
 			}
 
-			// ── Editable plain cell ───────────────────────────────────────────
-			if (canEditThisCell) {
-				return (
-					<span
-						onDoubleClick={(event) => {
-							event.preventDefault();
-							event.stopPropagation();
-							beginEditCell(item, column, effectiveDataType, formattedValue);
+			return (
+				<>
+					{cellOverlay}
+					{canEditThisCell && (
+						<div
+							style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, cursor: 'text', zIndex: 1 }}
+							onDoubleClick={() => { beginEditCell(item, column, effectiveDataType, formattedValue); }}
+						/>
+					)}
+					<div
+						style={{
+							display: 'flex',
+							alignItems: 'center',
+							height: '100%',
+							width: '100%',
+							boxSizing: 'border-box',
+							userSelect: 'none',
+							position: 'relative',
+							zIndex: 2,
 						}}
-						style={{ cursor: "text", display: "block", width: "100%", minHeight: "1em" }}
-						title="Double-click to edit">
-						{withStatus(formattedValue)}
-					</span>
-				);
-			}
-
-			return withStatus(formattedValue);
+						onMouseDown={handleCellMouseDown}
+						onMouseEnter={handleCellMouseEnter}
+						onDoubleClick={canEditThisCell ? () => { beginEditCell(item, column, effectiveDataType, formattedValue); } : undefined}
+					>
+						{innerContent}
+					</div>
+				</>
+			);
 		},
 		[
 			beginEditCell,
@@ -1169,10 +1322,12 @@ export const Grid = React.memo((props: GridProps) => {
 			commitLookupCell,
 			editingCells,
 			cellSaveStatuses,
+			cellSelection,
 			columnOptions,
 			enableInlineEdit,
 			enableLookupLinks,
 			getLookupReference,
+			gridColumns,
 			isComponentLoading,
 			isInlineEditableDataType,
 			isLookupDataType,
@@ -1239,11 +1394,14 @@ export const Grid = React.memo((props: GridProps) => {
 							gapSpace={8}
 							calloutMaxHeight={560}
 							setInitialFocus>
-							<Stack tokens={{ childrenGap: 0 }} style={{ width: 280, padding: 4 }}>
+							{filterView === "main" ? (
+								<Stack tokens={{ childrenGap: 0 }} style={{ width: 280, padding: 4 }}>
+
 								<ActionButton
 									styles={menuRowStyles}
 									text={resources.getString("Label_SortAZ")}
 									iconProps={{ iconName: "SortUp" }}
+									onMouseEnter={() => setFilterView("main")}
 									onClick={() => {
 										onSort(filterColumn.key, "asc");
 										setIsLoading(true);
@@ -1254,6 +1412,7 @@ export const Grid = React.memo((props: GridProps) => {
 									styles={menuRowStyles}
 									text={resources.getString("Label_SortZA")}
 									iconProps={{ iconName: "SortDown" }}
+									onMouseEnter={() => setFilterView("main")}
 									onClick={() => {
 										onSort(filterColumn.key, "desc");
 										setIsLoading(true);
@@ -1265,6 +1424,7 @@ export const Grid = React.memo((props: GridProps) => {
 									styles={menuRowStyles}
 									text="Clear Filter"
 									iconProps={{ iconName: "ClearFilter" }}
+									onMouseEnter={() => setFilterView("main")}
 									onClick={() => {
 										onFilter(filterColumn.key, "clear");
 										setIsLoading(true);
@@ -1277,11 +1437,8 @@ export const Grid = React.memo((props: GridProps) => {
 									text="Filter by"
 									iconProps={{ iconName: "Filter" }}
 									menuIconProps={{ iconName: "ChevronRight" }}
-									onClick={(event) => {
-										if (event?.currentTarget) {
-											openFilterByPopup(event.currentTarget as HTMLElement);
-										}
-									}}
+									onMouseEnter={() => setFilterView("filterBy")}
+									onClick={() => setFilterView("filterBy")}
 								/>
 							<div style={{ height: 1, background: theme.palette.neutralLight, margin: "2px 0" }} />
 								<TextField
@@ -1333,46 +1490,44 @@ export const Grid = React.memo((props: GridProps) => {
 									<PrimaryButton text="OK" onClick={onApplyValueFilter} disabled={checkedFilterValues.length === 0} />
 									<DefaultButton text="Cancel" onClick={onFilterDismiss} />
 								</Stack>
-							</Stack>
-						</Callout>
-					)}
-					{filterByTarget && filterColumn && (
-						<Callout
-							target={filterByTarget}
-							onDismiss={closeFilterByPopup}
-							directionalHint={DirectionalHint.rightTopEdge}
-							gapSpace={8}
-							setInitialFocus>
-							<Stack tokens={{ childrenGap: 10 }} style={{ width: 280, padding: 12 }}>
-								<Stack horizontal horizontalAlign="space-between" verticalAlign="center">
-									<Text variant="mediumPlus">Filter by</Text>
-									<IconButton iconProps={{ iconName: "Cancel" }} onClick={closeFilterByPopup} />
 								</Stack>
-								<select
-									value={filterByMode}
-									onChange={(event) => setFilterByMode(event.currentTarget.value as FilterByMode)}
-									style={{ width: "100%", minHeight: 32 }}>
-									{filterByOptions.map((option) => (
-										<option key={option.key} value={option.key}>
-											{option.text}
-										</option>
-									))}
-								</select>
-								{isFilterValueRequired(filterByMode) && (
-									<TextField
-										value={filterByValue}
-										onChange={(_event, newValue) => setFilterByValue(newValue ?? "")}
-									/>
-								)}
-								<Stack horizontal horizontalAlign="end" tokens={{ childrenGap: 8 }}>
-									<PrimaryButton
-										text="Apply"
-										onClick={applyFilterBy}
-										disabled={isFilterValueRequired(filterByMode) && filterByValue.trim().length === 0}
-									/>
-									<DefaultButton text="Clear" onClick={clearFilterBy} />
+							) : (
+								<Stack tokens={{ childrenGap: 10 }} style={{ width: 280, padding: 12 }}>
+									<Stack horizontal horizontalAlign="space-between" verticalAlign="center">
+										<ActionButton
+											styles={menuRowStyles}
+											iconProps={{ iconName: "Back" }}
+											text="Back"
+											onClick={() => setFilterView("main")}
+										/>
+										<Text variant="mediumPlus">Filter by</Text>
+									</Stack>
+									<select
+										value={filterByMode}
+										onChange={(event) => setFilterByMode(event.currentTarget.value as FilterByMode)}
+										style={{ width: "100%", minHeight: 32 }}>
+										{filterByOptions.map((option) => (
+											<option key={option.key} value={option.key}>
+												{option.text}
+											</option>
+										))}
+									</select>
+									{isFilterValueRequired(filterByMode) && (
+										<TextField
+											value={filterByValue}
+											onChange={(_event, newValue) => setFilterByValue(newValue ?? "")}
+										/>
+									)}
+									<Stack horizontal horizontalAlign="end" tokens={{ childrenGap: 8 }}>
+										<PrimaryButton
+											text="Apply"
+											onClick={applyFilterBy}
+											disabled={isFilterValueRequired(filterByMode) && filterByValue.trim().length === 0}
+										/>
+										<DefaultButton text="Clear" onClick={clearFilterBy} />
+									</Stack>
 								</Stack>
-							</Stack>
+							)}
 						</Callout>
 					)}
 				</ScrollablePane>
