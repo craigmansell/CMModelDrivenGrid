@@ -425,6 +425,11 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		this.context.parameters.records.refresh();
 	};
 
+	onClearAllFilters = (): void => {
+		this.context.parameters.records.filtering.clearFilter();
+		this.context.parameters.records.refresh();
+	};
+
 	loadFirstPage = (): void => {
 		this.currentPage = 1;
 		this.context.parameters.records.paging.loadExactPage(1);
@@ -716,6 +721,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 				onOpenLookup: this.onOpenLookup,
 				onSort: this.onSort,
 				onFilter: this.onFilter,
+				onClearAllFilters: this.onClearAllFilters,
 				loadFirstPage: this.loadFirstPage,
 				loadNextPage: this.loadNextPage,
 				loadPreviousPage: this.loadPreviousPage,

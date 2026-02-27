@@ -99,6 +99,7 @@ export interface GridProps {
 			| "clear",
 		value?: string | string[]
 	) => void;
+	onClearAllFilters: () => void;
 	loadFirstPage: () => void;
 	loadNextPage: () => void;
 	loadPreviousPage: () => void;
@@ -406,6 +407,7 @@ export const Grid = React.memo((props: GridProps) => {
 		onNavigate,
 		onSort,
 		onFilter,
+		onClearAllFilters,
 		resources,
 		loadFirstPage,
 		loadNextPage,
@@ -841,6 +843,29 @@ export const Grid = React.memo((props: GridProps) => {
 		[]
 	);
 
+	const activeFilters = React.useMemo(() => {
+		if (!filtering?.conditions || filtering.conditions.length === 0) return [];
+		return filtering.conditions.map((condition) => {
+			const col = columns.find(
+				(c) => c.name === condition.attributeName || c.name + "name" === condition.attributeName
+			);
+			const { mode, value } = deriveFilterByState(condition);
+			const modeShort: Partial<Record<FilterByMode, string>> = {
+				equals: "=", notEquals: "≠",
+				contains: "contains", notContains: "not contains",
+				beginsWith: "starts", notBeginsWith: "not starts",
+				endsWith: "ends", notEndsWith: "not ends",
+			};
+			let valueLabel: string;
+			if (mode === "containsData") valueLabel = "has data";
+			else if (mode === "doesNotContainData") valueLabel = "is blank";
+			else if (Array.isArray(condition.value)) valueLabel = `${condition.value.length} values`;
+			else valueLabel = `${modeShort[mode] ?? mode} "${value}"`;
+
+			return { columnKey: col?.name ?? condition.attributeName, displayName: col?.displayName ?? condition.attributeName, valueLabel };
+		});
+	}, [columns, filtering?.conditions, deriveFilterByState]);
+
 	const onFilterDismiss = React.useCallback(() => {
 		if (filterByHoverTimerRef.current !== undefined) {
 			window.clearTimeout(filterByHoverTimerRef.current);
@@ -1091,7 +1116,9 @@ export const Grid = React.memo((props: GridProps) => {
 			.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 			.map((col) => {
 				const sortOn = sorting?.find((s) => s.name === col.name);
-				const filtered = filtering?.conditions?.find((f) => f.attributeName == col.name);
+				const filtered = filtering?.conditions?.find(
+					(f) => f.attributeName === col.name || f.attributeName === col.name + "name"
+				);
 				return {
 					key: col.name,
 					name: col.displayName,
@@ -1585,6 +1612,56 @@ export const Grid = React.memo((props: GridProps) => {
 				</ScrollablePane>
 				{(itemsLoading || isComponentLoading) && <Overlay />}
 			</Stack.Item>
+			{activeFilters.length > 0 && (
+				<Stack.Item>
+					<Stack
+						horizontal
+						wrap
+						verticalAlign="center"
+						tokens={{ childrenGap: 4 }}
+						style={{
+							padding: "4px 8px",
+							borderTop: `1px solid ${theme.palette.neutralLight}`,
+							background: theme.palette.neutralLighterAlt,
+						}}
+					>
+						<Text variant="small" style={{ color: theme.palette.neutralSecondary, whiteSpace: "nowrap" }}>
+							Filtered by:
+						</Text>
+						{activeFilters.map((f) => (
+							<span
+								key={f.columnKey}
+								style={{
+									display: "inline-flex",
+									alignItems: "center",
+									background: theme.palette.white,
+									border: `1px solid ${theme.palette.neutralTertiaryAlt}`,
+									borderRadius: 2,
+									padding: "1px 4px 1px 6px",
+									fontSize: 12,
+									gap: 2,
+								}}
+							>
+								<strong>{f.displayName}</strong>
+								<span style={{ color: theme.palette.neutralSecondary, marginLeft: 2 }}>{f.valueLabel}</span>
+								<IconButton
+									iconProps={{ iconName: "Cancel" }}
+									styles={{ root: { height: 20, width: 20, minWidth: 20 }, icon: { fontSize: 10 } }}
+									title={`Clear filter on ${f.displayName}`}
+									onClick={() => { onFilter(f.columnKey, "clear"); setIsLoading(true); }}
+								/>
+							</span>
+						))}
+						{activeFilters.length > 1 && (
+							<DefaultButton
+								text="Clear All"
+								styles={{ root: { height: 22, minWidth: 0, padding: "0 8px" }, label: { fontSize: 12 } }}
+								onClick={() => { onClearAllFilters(); setIsLoading(true); }}
+							/>
+						)}
+					</Stack>
+				</Stack.Item>
+			)}
 			<Stack.Item>
 				<Stack horizontal style={{ width: "100%", paddingLeft: 8, paddingRight: 8 }}>
 					<Stack.Item align="center">
@@ -1593,6 +1670,11 @@ export const Grid = React.memo((props: GridProps) => {
 								resources.getString("Label_Grid_Footer_RecordCount"),
 								totalResultCount === -1 ? "5000+" : totalResultCount.toString(),
 								selection.getSelectedCount().toString()
+							)}
+							{activeFilters.length > 0 && (
+								<span style={{ marginLeft: 6, color: theme.palette.themePrimary, fontStyle: "italic" }}>
+									(filtered)
+								</span>
 							)}
 						</Text>
 					</Stack.Item>
