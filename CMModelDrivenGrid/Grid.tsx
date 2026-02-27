@@ -1019,7 +1019,7 @@ export const Grid = React.memo((props: GridProps) => {
 
 		setIsLoading(true);
 		onFilterDismiss();
-	}, [allFilterValues.length, blankValueLabel, checkedFilterValues, filterColumn, onFilter, onFilterDismiss]);
+	}, [blankValueLabel, checkedFilterValues, filterColumn, onFilter, onFilterDismiss]);
 
 	const onColumnContextMenu = React.useCallback(
 		(column?: IColumn, ev?: React.MouseEvent<HTMLElement>) => {
