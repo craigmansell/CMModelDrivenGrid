@@ -454,6 +454,7 @@ export const Grid = React.memo((props: GridProps) => {
 	const [filterView, setFilterView] = React.useState<"main" | "filterBy">("main");
 	const [filterByMode, setFilterByMode] = React.useState<FilterByMode>("equals");
 	const [filterByValue, setFilterByValue] = React.useState<string>("");
+	const filterByHoverTimerRef = React.useRef<number | undefined>(undefined);
 
 	// Multi-cell editing state — each key is `${recordId}-${columnName}`.
 	const [editingCells, setEditingCells] = React.useState<Map<string, EditingCell>>(() => new Map());
@@ -823,6 +824,10 @@ export const Grid = React.memo((props: GridProps) => {
 	);
 
 	const onFilterDismiss = React.useCallback(() => {
+		if (filterByHoverTimerRef.current !== undefined) {
+			window.clearTimeout(filterByHoverTimerRef.current);
+			filterByHoverTimerRef.current = undefined;
+		}
 		setFilterColumn(undefined);
 		setFilterTarget(undefined);
 		setFilterView("main");
@@ -831,6 +836,22 @@ export const Grid = React.memo((props: GridProps) => {
 		setSearchText("");
 		setFilterByMode("equals");
 		setFilterByValue("");
+	}, []);
+
+	const handleFilterByMouseEnter = React.useCallback(() => {
+		if (filterByHoverTimerRef.current !== undefined) return; // timer already running
+		filterByHoverTimerRef.current = window.setTimeout(() => {
+			filterByHoverTimerRef.current = undefined;
+			setFilterView("filterBy");
+		}, 1000);
+	}, []);
+
+	const handleMainMenuMouseEnter = React.useCallback(() => {
+		if (filterByHoverTimerRef.current !== undefined) {
+			window.clearTimeout(filterByHoverTimerRef.current);
+			filterByHoverTimerRef.current = undefined;
+		}
+		setFilterView("main");
 	}, []);
 
 	const openFilterCallout = React.useCallback(
@@ -985,7 +1006,7 @@ export const Grid = React.memo((props: GridProps) => {
 			return;
 		}
 
-		if (checkedFilterValues.length === 0 || checkedFilterValues.length === allFilterValues.length) {
+		if (checkedFilterValues.length === 0) {
 			onFilter(filterColumn.key, "clear");
 		} else {
 			const rawValues = checkedFilterValues.map((value) => (value === blankValueLabel ? "" : value));
@@ -1394,14 +1415,13 @@ export const Grid = React.memo((props: GridProps) => {
 							gapSpace={8}
 							calloutMaxHeight={560}
 							setInitialFocus>
-							{filterView === "main" ? (
+							<Stack horizontal>
 								<Stack tokens={{ childrenGap: 0 }} style={{ width: 280, padding: 4 }}>
-
 								<ActionButton
 									styles={menuRowStyles}
 									text={resources.getString("Label_SortAZ")}
 									iconProps={{ iconName: "SortUp" }}
-									onMouseEnter={() => setFilterView("main")}
+									onMouseEnter={handleMainMenuMouseEnter}
 									onClick={() => {
 										onSort(filterColumn.key, "asc");
 										setIsLoading(true);
@@ -1412,7 +1432,7 @@ export const Grid = React.memo((props: GridProps) => {
 									styles={menuRowStyles}
 									text={resources.getString("Label_SortZA")}
 									iconProps={{ iconName: "SortDown" }}
-									onMouseEnter={() => setFilterView("main")}
+									onMouseEnter={handleMainMenuMouseEnter}
 									onClick={() => {
 										onSort(filterColumn.key, "desc");
 										setIsLoading(true);
@@ -1424,7 +1444,7 @@ export const Grid = React.memo((props: GridProps) => {
 									styles={menuRowStyles}
 									text="Clear Filter"
 									iconProps={{ iconName: "ClearFilter" }}
-									onMouseEnter={() => setFilterView("main")}
+									onMouseEnter={handleMainMenuMouseEnter}
 									onClick={() => {
 										onFilter(filterColumn.key, "clear");
 										setIsLoading(true);
@@ -1433,12 +1453,24 @@ export const Grid = React.memo((props: GridProps) => {
 								/>
 							<div style={{ height: 1, background: theme.palette.neutralLight, margin: "2px 0" }} />
 								<ActionButton
-									styles={menuRowStyles}
+									styles={{
+										...menuRowStyles,
+										root: {
+											...menuRowStyles.root,
+											backgroundColor: filterView === "filterBy" ? theme.palette.neutralLighter : undefined,
+										},
+									}}
 									text="Filter by"
 									iconProps={{ iconName: "Filter" }}
 									menuIconProps={{ iconName: "ChevronRight" }}
-									onMouseEnter={() => setFilterView("filterBy")}
-									onClick={() => setFilterView("filterBy")}
+									onMouseEnter={handleFilterByMouseEnter}
+									onClick={() => {
+										if (filterByHoverTimerRef.current !== undefined) {
+											window.clearTimeout(filterByHoverTimerRef.current);
+											filterByHoverTimerRef.current = undefined;
+										}
+										setFilterView("filterBy");
+									}}
 								/>
 							<div style={{ height: 1, background: theme.palette.neutralLight, margin: "2px 0" }} />
 								<TextField
@@ -1491,17 +1523,16 @@ export const Grid = React.memo((props: GridProps) => {
 									<DefaultButton text="Cancel" onClick={onFilterDismiss} />
 								</Stack>
 								</Stack>
-							) : (
-								<Stack tokens={{ childrenGap: 10 }} style={{ width: 280, padding: 12 }}>
-									<Stack horizontal horizontalAlign="space-between" verticalAlign="center">
-										<ActionButton
-											styles={menuRowStyles}
-											iconProps={{ iconName: "Back" }}
-											text="Back"
-											onClick={() => setFilterView("main")}
-										/>
-										<Text variant="mediumPlus">Filter by</Text>
-									</Stack>
+
+								{filterView === "filterBy" && (
+								<Stack
+									tokens={{ childrenGap: 10 }}
+									style={{
+										width: 280,
+										padding: 12,
+										borderLeft: `1px solid ${theme.palette.neutralLight}`,
+									}}>
+									<Text variant="mediumPlus">Filter by</Text>
 									<select
 										value={filterByMode}
 										onChange={(event) => setFilterByMode(event.currentTarget.value as FilterByMode)}
@@ -1527,7 +1558,8 @@ export const Grid = React.memo((props: GridProps) => {
 										<DefaultButton text="Clear" onClick={clearFilterBy} />
 									</Stack>
 								</Stack>
-							)}
+								)}
+							</Stack>
 						</Callout>
 					)}
 				</ScrollablePane>
