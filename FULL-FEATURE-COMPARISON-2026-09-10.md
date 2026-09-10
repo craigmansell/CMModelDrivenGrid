@@ -1,12 +1,12 @@
 # DrivenGrid vs Power Apps grid — updated full review
 
-10 September 2026. Candidate **1.0.111 / unmanaged solution 1.0.90.0**.
+10 September 2026. Candidate **1.0.112 / unmanaged solution 1.0.91.0**.
 
 ## Outcome
 
 This batch adds substantial functionality and fixes the confirmed correctness issues,
 but **DrivenGrid is not a complete native-grid replacement**. The code and local
-harness include these changes; the sandbox still runs **1.0.110 / 1.0.89.0**.
+harness include these changes; the last verified sandbox release is **1.0.110 / 1.0.89.0**.
 No deployment or business-data change was made during this implementation batch.
 
 Added: 30 date conditions; complete-level groups and totals; column movement and
@@ -16,9 +16,16 @@ wildcards, ambiguous lookup-save retries, clipboard quoting/errors, unknown coun
 text whitespace and floating-point editing. The earlier full-view Select All work
 is included in the owner-approved dependent source batch.
 
+Follow-up 1.0.112 keeps the independent PCF and every existing Excel menu feature.
+It adds five date-group intervals with collapsed defaults, keyboard range extension,
+Shift-add sorting, scoped browser column layouts, alphabet filtering, all/primary/none
+navigation and the supported full lookup dialog. It fixes unchosen lookup acceptance
+on Tab, late/cancelled picker results, portalled click propagation, custom-table
+primary-name metadata and stale visual settings on recycled rows.
+
 The important remaining gaps are different-table/independent child datasets,
-lookup/status label-pattern filters, advanced lookup and specialist editors,
-native event/customizer contracts, keyboard range extension, and full device,
+lookup/status label-pattern filters, richer specialist editors,
+native event/customizer contracts, and full device,
 localization, permission and live-scale acceptance. Matching menu labels is not
 proof of matching execution. A third-party dataset control's public API does not
 establish access to all Microsoft OneGrid host integration. Do not bridge that gap
@@ -28,7 +35,7 @@ by injecting records, overriding command rules or adding the rejected child tool
 
 The reference inventory was captured earlier on the same day from installed
 `Microsoft.PowerApps.PowerAppsOneGrid` **1.0.356**: 45 direct properties, 26 non-hidden
-and 19 hidden, plus Items/ChildItems datasets. DrivenGrid now has 35 direct inputs
+and 19 hidden, plus Items/ChildItems datasets. DrivenGrid now has 39 direct inputs
 and one records dataset. Property counts are **not a parity percentage**.
 
 - **Earlier paired live**: same sandbox demo parent/two children and nine columns;
@@ -67,7 +74,7 @@ results have not been relabelled as candidate tests.
 | D07 | Refresh | Native refresh integrates with rows/children/selection; external-update combinations open. |
 | D08 | Counts | Fixed unknown totals: loaded count with `+` while incomplete, rather than assuming 5,000. |
 | D09 | Open own record | Earlier paired native Edit opened exact child; compact sample Open also targets exact child. |
-| D10 | Lookup links | Boolean switch, with corrected click event. Native all/primary-only/none setting still absent. |
+| D10 | Lookup links | Added all/primary/none, gated by EnableLookupLinks. Primary text, related lookup and list navigation covered locally. |
 | D11 | Query/view changes | Local stale-request/cache tests; full host view/search matrix open. |
 | D12 | Blanks/formatting | Raw blank/zero identity and supplied formatting covered; full locale/currency/timezone matrix open. |
 
@@ -87,7 +94,7 @@ results have not been relabelled as candidate tests.
 | S10 | Offscreen identity | IDs survive row recycling; large native comparison remains open. |
 | S11 | Recursive Select All | Not implied: selecting parents does not select every descendant. No native recursive promise established. |
 | S12 | Single-select option | Added EnableMultipleSelection; tested replacement selection in list mode. |
-| S13 | Rectangular copy | Mouse drag/Shift-click; quoting fixed. Native keyboard range extension remains absent. |
+| S13 | Rectangular copy | Mouse drag/Shift-click plus Shift-keyboard extension. Quoted TSV and focus guard tested. Hidden collapsed-group rows excluded. |
 | S14 | Embedded tabs/newlines/quotes | Quoted TSV serializer tested. Actual paste into Excel not acceptance-tested. |
 | S15 | Paste/fill/undo | Not implemented as spreadsheet features; not established as universal native capabilities either. |
 | S16 | Clipboard denied/unavailable | Visible error feedback added and component-tested. Browser permission matrix open. |
@@ -163,17 +170,17 @@ and [ConditionOperator definitions](https://learn.microsoft.com/en-us/dotnet/api
 | ID | Feature | Candidate against native grid |
 | --- | --- | --- |
 | C01 | Single sort | Ascending/descending, numeric/date semantics; earlier paired child sorts. |
-| C02 | Additive sort | Intentionally simple replace-sort menu, per owner request. Native Shift-add sorting not implemented in UI. |
+| C02 | Additive sort | Added Shift + existing direction button. Root/child preserve other priorities. The rejected Add to current sort menu item stays absent. |
 | C03 | Initial view order | Supported where supplied; ensure explicit stable order/tie-breaker for a fair comparison. |
 | C04 | Resize | Drag plus new 80–2,000px content-width editor; 220px yielded 244px including cell padding in browser. |
 | C05 | Fill width | Spare-width distribution, minimums and overflow retained. |
 | C06 | Column movement | New header drag/drop callback and Move left/right. Browser Budget moved before Project; drag gesture itself not browser-tested. |
 | C07 | Edit view columns | Host designer integration, not a custom view-management implementation. |
-| C08 | Groups | New raw-value single-column groups, individual/global collapse retained. Initially expanded, unlike documented native default. |
-| C09 | Date intervals | **Gap**: exact-value grouping only; native date interval submenu not reproduced. |
+| C08 | Groups | Raw-value single-column groups, individual/global collapse retained. New groups now start collapsed. |
+| C09 | Date intervals | Added day/week/month/quarter/year, chronological ordering and configurable week start. DateOnly remains calendar-only; DateTime currently uses browser timezone. Native user-timezone/TimeZoneIndependent acceptance open. |
 | C10 | Totals | Sum/average/min/max; all pages of current level before displaying complete totals. No currency conversion/server aggregate plan. |
 | C11 | Groups with hierarchy/paging | Custom groups require infinite scrolling; no full native combination signoff. Group header selection still obeys 1,000 cap. |
-| C12 | Save layout | In-memory per-level state, not saved personal views or durable native personalization. |
+| C12 | Save layout | Column order/widths persist in this browser, scoped to origin/user/table/view/root-or-child. Reset and blocked/corrupt storage tested. Not cloud personalization or saved personal views; no record data stored. |
 
 Grouping/totals fetch all matching records in one level, but do not expand children.
 They may consume more memory/network than server aggregates. Pause/Resume affects
@@ -193,8 +200,8 @@ totals. Raw transaction-currency sums must not be treated as converted base curr
 | E07 | Choice | Metadata options plus new validated colour pills; dynamic/translated states open. |
 | E08 | State/status | Inline transition editing blocked; use native Activate/Deactivate. New value icons are not row-save status icons. |
 | E09 | Date | Date-only calendar input added; DateTime editor/timezone/locale remains partial. |
-| E10 | Lookup | Search/choose/clear; 20-result cap and primary-name field. Native candidate experience broader. |
-| E11 | Advanced lookup | **Gap**: MRU/view selector/create target/advanced dialog/polymorphic picker not fully implemented. |
+| E10 | Lookup | Search/choose/clear with explicit keyboard highlight. Metadata primary names honoured; Tab no longer accepts an unchosen first result. Inline search remains 20 results. |
+| E11 | Advanced lookup | Added More records using supported PCF lookupObjects for the current target table. Revalidates exact ID/configured filters/read-only/view after return. Cancellation/unmount tested locally; live dialog, MRU/create/related views and full polymorphic UX still open. |
 | E12 | Customer/regarding/party list | No generic specialist inline editors. Native availability must be checked for each configuration. |
 | E13 | Multi-select choice | No complete inline editor. |
 | E14 | File/image/virtual/ID | Guarded out/no specialist editor; not claimed universally editable in native either. |
@@ -233,8 +240,8 @@ remain on the actual command surface, evaluated for the actual selected records.
 | U03 | Fullscreen | Intentionally absent. |
 | U04 | Filter sizing | Bounded checklist, dynamic condition height, dotted guides; compact fiscal editor visually checked. Full zoom matrix open. |
 | U05 | Formatting | New type icons/choice colours/state value icons; native row-status column still different. |
-| U06 | Keyboard/edit | Fluent navigation and custom edit keys; complete native keyboard parity open. |
-| U07 | Keyboard copy ranges | Mouse range/Shift-click only; keyboard extension and cross-page range copying remain gaps. |
+| U06 | Keyboard/edit | Added arrows, Home/End, PageUp/PageDown, Ctrl-edge, F2/Space/Enter and explicit lookup highlight/Enter. Full native typing-to-edit/date shortcut/mobile matrix remains open. |
+| U07 | Keyboard copy ranges | Shift extends rectangles. Focus crosses recycled rows and the next loaded-page boundary. Ctrl+End stops at last loaded row; it does not load an unbounded result. Exact TSV tested locally; paste into real Excel not acceptance-tested. |
 | U08 | Accessibility | New configurable grid name plus existing region/expanded/status labels. No screen-reader certification. |
 | U09 | Forced colours | Explicit CSS/focus styles; comprehensive visual/contrast audit open. |
 | U10 | Small screens/touch/zoom | Auto cards below 480px, forced-list browser check; actual devices/touch/full zoom open. |
@@ -269,13 +276,13 @@ remain on the actual command surface, evaluated for the actual selected records.
 | EnableAggregation | Added EnableAggregation; client raw-number implementation. |
 | EnableColumnMoving | Added EnableColumnMoving. |
 | EnableMultipleSelection | Added EnableMultipleSelection. |
-| EnableRangeSelection | Added EnableRangeSelection; mouse-range implementation. |
-| EnableJumpBar | Not implemented. |
+| EnableRangeSelection | Mouse and keyboard ranges with quoted TSV copy. |
+| EnableJumpBar | Added optional A–Z for the primary sorted text column; All removes only the alphabet constraint. Existing column conditions remain. |
 | EnablePagination | Inverse InfiniteScroll choice; not identical contract. |
 | EnableDropdownColor | Added ShowChoiceColors. |
 | EnableStatusIcons | Native edit-row status icons not equivalent to custom ShowStatusIcons value icons. |
 | EnableTypeIcons | Added ShowTypeIcons. |
-| NavigationTypesAllowed | EnableLookupLinks boolean only. |
+| NavigationTypesAllowed | NavigationTypes all/primary/none plus EnableLookupLinks gate. |
 | ReflowBehavior | Added auto/grid/list. |
 | ShowAvatar | Added initials. |
 | ShowColumnNamesForListView | Added ShowListColumnNames. |
@@ -295,7 +302,7 @@ DisableStatusColumn, DisableStatusColumnSavingIcons.
 
 Native Items and ChildItems/ParentId datasets are not equivalent to DrivenGrid's
 single records dataset with a self-lookup loader. DrivenGrid's original 19 inputs
-and 16 additions are documented in its manifest/README, including legacy no-op
+and 20 additions are documented in its manifest/README, including legacy no-op
 EnableChildCommands/ChildContextLookup retained for installed form compatibility.
 
 Microsoft's [configuration guidance](https://learn.microsoft.com/en-us/power-apps/maker/model-driven-apps/the-power-apps-grid-control)
@@ -303,7 +310,36 @@ describes grid/list settings and limitations. Actual installed declarations and
 earlier live observations underpin this inventory; documentation alone is not a
 claim that a particular combination is enabled on the test form.
 
-## Current validation record
+The full lookup uses Microsoft's public [PCF lookupObjects interface](https://learn.microsoft.com/en-us/power-apps/developer/component-framework/reference/utility/lookupobjects),
+not private OneGrid internals. It does not forward configured custom filter clauses
+to an undocumented option: selected IDs are checked separately before saving.
+
+## Current 1.0.112 validation record
+
+- Complete local suite passed, including all previous filter, child selection,
+  1,000-selection-cap, async paging and 42,000-fixture tests.
+- Added tests: five date buckets/calendar boundaries/week starts; chronological
+  groups; initial/global collapse; jump AND/removal/invalid letters/public marker
+  stripping; layout scoping/corrupt/blocked storage; all/primary/none navigation;
+  keyboard bounds/RTL/collapsed groups and exact Ctrl+Shift+End TSV.
+- Lookup tests cover Tab without a choice, ArrowDown/Enter, full-picker cancel and
+  refocus, single save, unmount, wrong table/ID, rejected configured restrictions,
+  view change and read-only checks both before and after asynchronous operations.
+  A portalled lookup click is prevented from reaching the grid selection handler.
+- Browser: alphabet A returned 334 matches; All restored 2,000. Moving Project
+  behind Budget survived reload; Reset restored original order. Ctrl+End focused
+  loaded row 50 and next-page prefetch reached 75; Shift+Down focused row 51.
+- Browser: month grouping loaded 2,000 parents, rendered 31 collapsed groups
+  (including 118 blanks), zero data-row DOM nodes and zero child requests.
+  Clearing grouping rendered 30 row nodes, not 2,000. This is a local rendering
+  observation, not a Dataverse throughput measurement.
+- No sandbox deployment, form/view/ribbon change or business-data write. Candidate
+  dialog/commands/permissions still require signed-in acceptance after a gated,
+  unmanaged sandbox deployment. The installed sandbox release remains 1.0.110.
+- Release build/package identity for this follow-up is recorded in
+  [the Excel-preserving validation record](VALIDATION-EXCEL-2026-09-10.md).
+
+## Earlier 1.0.111 validation record (retained evidence)
 
 - Full local regression suite: passed after all save/logging refinements and
   compatible dependency-security updates. Includes the exhaustive 42,000-record
@@ -339,7 +375,7 @@ Package: `CMModelDrivenGridSolution/bin/Release/CMModelDrivenGridSolution.zip`.
 SHA-256: `ECA9C5F62242C578D890ADD0A66274C26C83B8EE4302B8B89C4D8E3FEE99F7CD`.
 Bundled JavaScript SHA-256:
 `23E00D24DC0E83CD6F78FF314CA450A35117FEE4CEEABA721F210932E5826347`.
-These identify the locally built candidate, not an installed sandbox resource.
+These identify the earlier 1.0.111 local package, superseded by 1.0.112, not an installed sandbox resource.
 
 ### Dependency-security review
 

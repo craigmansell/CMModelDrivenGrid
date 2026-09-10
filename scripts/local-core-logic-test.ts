@@ -158,6 +158,7 @@ async function run(): Promise<void> {
 	assert(testableControl.parseInlineEditValue('', 'Multiple') === null, 'An empty text editor must still clear its value.');
 	for (const type of ['FP','Double','Float','Money']) assert(testableControl.parseInlineEditValue(' 12.5 ',type) === 12.5, `${type} must save a number, not numeric text.`);
 	await testLookupWriteSafety();
+	await testLookupDialogSafety();
 
 	assertThrows(
 		() => testableControl.parseInlineEditValue("12.5", "Whole.None"),
@@ -509,6 +510,46 @@ async function testLookupWriteSafety(): Promise<void> {
 	rejected=false;
 	try {await child.grid.onUpdateLookupCell(`{${rowId.toUpperCase()}}`,'lookup',targetId,'contact');} catch {rejected=true;}
 	assert(rejected && child.writes()===0,'Read-only children must be guarded with normalized record IDs.');
+}
+
+async function testLookupDialogSafety(): Promise<void> {
+	const rowId = '00000000-0000-4000-8000-000000000001';
+	const targetId = '00000000-0000-4000-8000-000000000002';
+	const create = () => {
+		const grid = new CMModelDrivenGrid();
+		const seen = {dialogs:0,queries:[] as string[],writes:0};
+		grid.context = {mode:{isControlDisabled:false},parameters:{EnableInlineEdit:{raw:true}, LookupFilterConfig:{raw:JSON.stringify({byColumn:{lookup:'statecode eq 0'}})},records:{getViewId:()=> 'view-1',getTargetEntityType:()=> 'account',columns:[{name:'lookup',dataType:'Lookup.Simple'}]}},
+			utils:{getEntityMetadata:async()=>({EntitySetName:'cm_tags',PrimaryIdAttribute:'cm_tagid',PrimaryNameAttribute:'name',Attributes:{getAll:()=>[]}}),lookupObjects:async(options:ComponentFramework.UtilityApi.LookupOptions)=>{seen.dialogs++;assert(options.allowMultiSelect === false && options.entityTypes.join() === 'cm_tag','Picker must be single-select for the correct table.');return [{id:`{${targetId}}`,entityType:'cm_tag',name:'From dialog'}];}},
+			webAPI:{retrieveMultipleRecords:async(_entity:string,query:string)=>{seen.queries.push(query);return {entities:[{cm_tagid:targetId,name:'Verified name'}]};},updateRecord:async()=>{seen.writes++;}}} as unknown as TestContext;
+		return {grid,seen};
+	};
+	const good=create();
+	const chosen=await good.grid.onBrowseLookup('cm_tag',"O'Brien & Sons",'lookup',rowId);
+	assert(chosen?.id === targetId && chosen.name === 'Verified name','Picker must normalize ID and use verified metadata name, including custom tables using name.');
+	const params = new URLSearchParams(good.seen.queries[0]);
+	assert(params.get('$select') === 'cm_tagid,name','Authoritative name metadata must not be replaced by a publisher convention.');
+	assert(params.get('$filter') === `(cm_tagid eq ${targetId}) and (statecode eq 0)`,'Full lookup must enforce both exact ID and configured restrictions.');
+	assert(good.seen.writes === 0,'Opening and choosing a lookup must not perform its own duplicate update.');
+	const cancelled=create(); cancelled.grid.context.utils.lookupObjects=async()=>[];
+	assert(await cancelled.grid.onBrowseLookup('cm_tag','','lookup',rowId) === undefined && cancelled.seen.queries.length === 0,'Cancel must never clear or update a lookup.');
+	const reject = async(test:ReturnType<typeof create>,label:string) => {
+		let failed=false; try {await test.grid.onBrowseLookup('cm_tag','','lookup',rowId);} catch {failed=true;}
+		assert(failed && test.seen.writes===0,label);
+	};
+	const restricted=create(); restricted.grid.context.webAPI.retrieveMultipleRecords=async()=>({entities:[],nextLink:''});
+	await reject(restricted,'An out-of-filter record must be rejected.');
+	const disabled=create(); disabled.grid.context.mode.isControlDisabled=true;
+	await reject(disabled,'Read-only lookup cannot open.'); assert(disabled.seen.dialogs===0,'Read-only check must run before opening dialog.');
+	const changed=create(); changed.grid.context.utils.lookupObjects=async()=>{changed.grid.context.mode.isControlDisabled=true;return [{id:targetId,entityType:'cm_tag'}];};
+	await reject(changed,'Read-only state must be rechecked after the dialog.');
+	const moved=create(); moved.grid.context.utils.lookupObjects=async()=>{moved.grid.context.parameters.records.getViewId=()=> 'view-2';return [{id:targetId,entityType:'cm_tag'}];};
+	await reject(moved,'A dialog result from a previous view must not be applied.');
+	const wrong=create(); wrong.grid.context.utils.lookupObjects=async()=>[{id:targetId,entityType:'contact'}];
+	await reject(wrong,'Wrong-table results must be rejected.');
+	const invalid=create(); invalid.grid.context.utils.lookupObjects=async()=>[{id:"bad'guid",entityType:'cm_tag'}];
+	await reject(invalid,'Malformed lookup IDs must not reach an OData query.');
+	const afterRead=create(); afterRead.grid.context.webAPI.retrieveMultipleRecords=async()=>{afterRead.grid.context.mode.isControlDisabled=true;return {entities:[{cm_tagid:targetId,name:'Verified'}],nextLink:''};};
+	await reject(afterRead,'Read-only state must be rechecked after result validation.');
 }
 
 void run().catch((error: unknown) => {

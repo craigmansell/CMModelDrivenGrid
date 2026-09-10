@@ -1,5 +1,16 @@
 # CMModelDrivenGridSolution changelog
 
+## Unreleased candidate 1.0.91.0 / control 1.0.112 — keep Excel, close further gaps — 2026-09-10
+
+- Keep the independent DrivenGrid control, Excel-style searchable value checklist, dotted guides, dynamic condition panel, AND/OR filters, range copying and single shared command bar. Do not introduce a Microsoft grid dependency, fullscreen, a child toolbar or an Add to current sort item.
+- Add Shift-assisted multi-column sorting to the existing direction buttons. Child sort updates retain other priorities and clearing removes only the chosen column.
+- Add day/week/month/quarter/year date groups in chronological order; new groups start collapsed. Weeks honour the provided first day, DateOnly does not shift through timezones. DateTime grouping currently uses browser calendar time; full Dataverse user-timezone/TimeZoneIndependent parity remains open. Complete-level grouping/totals still fetch all matching rows in that level, not descendants.
+- Add keyboard arrows, Home/End, PageUp/PageDown, Ctrl-edge and Shift-range extension. Focus crosses virtual rows and can request the next page; Ctrl+End means the last currently loaded row, not an unbounded fetch. Copy excludes collapsed groups and preserves quoted Excel TSV. Read-only cells can still be navigated and copied.
+- Add opt-in EnableJumpBar: A–Z on the primary sorted text column, preserving existing Excel conditions. All removes only the jump condition. Strip internal jump markers before calling the public dataset API.
+- Add RememberColumnLayout (default true), scoped by browser origin, user, entity, view and root/child level. Store only column names/order/widths, not records, filters, drafts or selections. Handle blocked/corrupt storage; Reset column layout restores defaults. Add NavigationTypes all/primary/none, including primary text and compact-list links.
+- Add EnableLookupDialog (default true): More records uses supported PCF lookupObjects; validate its single-table/single-record result against metadata and configured restrictions before the existing save. Guard cancellation, unmount, changed view and read-only changes. Keyboard lookup highlights are explicit; Tab no longer picks an unchosen first result. Prevent portalled lookup clicks from reaching row selection, honour actual custom-table primary-name metadata and choose target-specific polymorphic bindings.
+- Local suite passes, including new lookup UI/safety, persistent-layout, jump-filter, keyboard, initial-collapse and observer-free automatic-scroll cases, plus existing filter/child/42,000-fixture tests. No Dataverse deployment, form/view/ribbon changes or business-data writes in this batch. Release package validation is recorded in the comparison document.
+
 ## Unreleased candidate 1.0.90.0 / control 1.0.111 — feature comparison batch — 2026-09-10
 
 - Add 30 date conditions with shared SDK/FetchXML mappings, fiscal period/year validation and server-side fiscal interpretation. Date/time now exposes 53 conditions (all 50 observed native choices plus After, Before and Between); date-only excludes four hour/minute conditions. Keep common conditions before advanced fiscal choices. Read-only sandbox queries accepted all 30 additions; this is not complete expected-ID/time-zone acceptance of each date condition.

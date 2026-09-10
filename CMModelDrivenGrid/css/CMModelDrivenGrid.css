@@ -380,4 +380,11 @@
 .cm-grid-list-field-value { flex: 1; min-width: 0; position: relative; height: 100%; overflow: hidden; }
 .cm-grid-list-mode .ms-DetailsList, .cm-grid-list-mode .ms-DetailsList-contentWrapper { min-width: 0 !important; width: 100% !important; }
 .cm-grid-avatar { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: #e1dfdd; font-size: 11px; }
+.cm-grid-jump-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; padding: 4px 8px; border-top: 1px solid #edebe9; }
+.cm-grid-jump-bar button { border: 0; border-radius: 2px; background: transparent; color: #005a9e; font: inherit; font-size: 12px; min-width: 24px; min-height: 28px; padding: 2px 5px; cursor: pointer; }
+.cm-grid-jump-bar button:hover:not(:disabled) { background: #f3f2f1; }
+.cm-grid-jump-bar button[aria-pressed="true"] { background: #deecf9; font-weight: 600; }
+.cm-grid-jump-bar button:disabled { color: #a19f9d; cursor: default; }
+.cm-grid-jump-bar button:focus-visible, .cm-model-driven-grid [data-cm-cell-row]:focus-visible { outline: 2px solid var(--cm-grid-accent); outline-offset: -2px; }
+@media (forced-colors: active) { .cm-grid-jump-bar button[aria-pressed="true"] { outline: 2px solid Highlight; } }
 @media (forced-colors: active) { .cm-grid-choice-badge, .cm-grid-totals, .cm-grid-list-row { background: Canvas !important; color: CanvasText !important; } .cm-grid-list-row[aria-selected="true"] { outline: 2px solid Highlight; } }

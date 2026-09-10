@@ -3,7 +3,7 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { IInputs, IOutputs } from "./generated/ManifestTypes";
 import { HierarchyGrid as Grid } from "./HierarchyGrid";
-import { createChildLoader, createChildAvailabilityLoader, ChildRowsConfig, ChildRequest } from "./childRecords";
+import { createChildLoader, createChildAvailabilityLoader, ChildRowsConfig, ChildRequest, childGuid, childLogicalName } from "./childRecords";
 import { createDataverseChildPaging } from "./dataverseChildPaging";
 import { FilterExpression, FilterMode, FilterValue, updateColumnFilter } from "./filtering";
 import { needsServerFilter, supportedFilterSuperset, collectFilterCandidates, resolveFilterIds, filterForIds } from './datasetFiltering';
@@ -1135,8 +1135,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 			const result = {
 				entitySetName: metaEntitySet !== "" ? metaEntitySet : `${entityType}s`,
 				primaryIdAttr: metaPrimaryId !== "" ? metaPrimaryId : `${entityType}id`,
-				// If metadata returns "name" for a custom entity, the convention is more reliable.
-				primaryNameAttr: metaPrimaryName && !(metaPrimaryName === "name" && publisherPrefix) ? metaPrimaryName : conventionName,
+				primaryNameAttr: metaPrimaryName !== '' ? metaPrimaryName : conventionName,
 				lookupFields,
 			};
 			this.entityMetaCache[entityType] = result;
@@ -1206,6 +1205,36 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		}
 	};
 
+	/** Supported PCF lookup dialog. Its result is revalidated against this column's restrictions. */
+	onBrowseLookup = async (entityType: string, searchTerm: string, columnName: string, recordId: string): Promise<{id: string; name: string} | undefined> => {
+		this.assertEditingAllowed(recordId);
+		const dataset = this.context.parameters.records;
+		const view = dataset.getViewId?.();
+		const sourceEntity = dataset.getTargetEntityType();
+		const assertCurrent = () => {
+			this.assertEditingAllowed(recordId); this.getEditableDatasetColumn(columnName);
+			if (this.context.parameters.records.getViewId?.() !== view || this.context.parameters.records.getTargetEntityType() !== sourceEntity) throw new Error('The grid changed. Open the lookup again.');
+		};
+		assertCurrent();
+		childLogicalName(entityType);
+		const options: ComponentFramework.UtilityApi.LookupOptions & {searchText: string} = {allowMultiSelect: false, defaultEntityType: entityType, entityTypes: [entityType], searchText: searchTerm};
+		const result = await this.context.utils.lookupObjects(options);
+		assertCurrent();
+		if (!result?.length) return undefined;
+		if (result.length !== 1 || result[0].entityType.toLowerCase() !== entityType.toLowerCase()) throw new Error('Choose one record from the correct table.');
+		const id = childGuid(result[0].id);
+		const meta = await this.getEntityMeta(entityType);
+		const rawClause = await this.resolveLookupFilterTokens(this.getLookupFilterClause(entityType, columnName), recordId);
+		assertCurrent();
+		const clause = this.normalizeLookupComparisonFields(rawClause, meta.lookupFields);
+		const filter = [`${childLogicalName(meta.primaryIdAttr)} eq ${id}`, clause].filter(Boolean).map(part => `(${part})`).join(' and ');
+		const allowed = await this.context.webAPI.retrieveMultipleRecords(entityType, `?$select=${childLogicalName(meta.primaryIdAttr)},${childLogicalName(meta.primaryNameAttr)}&$top=1&$filter=${encodeURIComponent(filter)}`, 1);
+		assertCurrent();
+		const row = allowed.entities.find(row => typeof row[meta.primaryIdAttr] === 'string' && childGuid(row[meta.primaryIdAttr] as string) === id);
+		if (!row) throw new Error('This record does not meet the lookup restrictions. Choose another record.');
+		return {id, name: typeof row[meta.primaryNameAttr] === 'string' ? row[meta.primaryNameAttr] as string : result[0].name ?? ''};
+	};
+
 	onUpdateLookupCell = async (
 		recordId: string,
 		columnName: string,
@@ -1225,7 +1254,10 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 
 			// Use the eagerly-fetched nav property map first (most reliable).
 			// Fall back to the runtime metadata resolver for any remaining candidates.
-			const prebuiltNavProp = this.lookupNavPropertyMap[editableColumn.name.toLowerCase()];
+			const key = editableColumn.name.toLowerCase();
+			// A polymorphic column can have a different binding per target table.
+			const prebuiltNavProp = this.lookupNavPropertyMap[`${key}:${targetEntityType.toLowerCase()}`]
+				?? (this.lookupTargetEntityMap[key] === targetEntityType.toLowerCase() ? this.lookupNavPropertyMap[key] : undefined);
 			const isClear = targetId === "";
 			const entitySetName = isClear ? "" : (await this.getEntityMeta(targetEntityType)).entitySetName;
 			const runtimeCandidates = await this.resolveLookupBindNames(entityType, editableColumn.name, targetEntityType);
@@ -1308,6 +1340,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 				const navProp = rel.ReferencingEntityNavigationPropertyName ?? "";
 				const referencedEntity = (rel.ReferencedEntity ?? "").toLowerCase();
 				if (attr && navProp && lookupColNames.has(attr)) {
+					if (referencedEntity) this.lookupNavPropertyMap[`${attr}:${referencedEntity}`] = navProp;
 					if (!this.lookupNavPropertyMap[attr]) {
 						this.lookupNavPropertyMap[attr] = navProp;
 					}
@@ -1447,8 +1480,14 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 			allocatedHeight = -1;
 		}
 
+		const viewKey = `${dataset.getTargetEntityType?.() ?? ''}|${dataset.getViewId?.() ?? ''}|${this.context.parameters.ChildViewId?.raw ?? ''}`;
+		const userId = this.context.userSettings?.userId;
+		const layoutKey = this.context.parameters.RememberColumnLayout?.raw !== false && userId && dataset.getViewId?.()
+			? `${window.location.origin}|${userId.toLowerCase()}|${viewKey}` : undefined;
 		ReactDOM.render(
 			React.createElement(Grid, {
+				key: `${userId ?? ''}|${viewKey}`,
+				layoutKey,
 				features: {
 					accessibleLabel: this.context.parameters.AccessibleLabel?.raw?.trim() ? this.context.parameters.AccessibleLabel.raw : 'Records',
 					enableGrouping: this.context.parameters.EnableGrouping?.raw ?? true,
@@ -1466,6 +1505,10 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 					showAvatar: this.context.parameters.ShowAvatar?.raw ?? false,
 					showListColumnNames: this.context.parameters.ShowListColumnNames?.raw ?? true,
 					bandedListRows: this.context.parameters.BandedListRows?.raw ?? true,
+					enableJumpBar: this.context.parameters.EnableJumpBar?.raw ?? false,
+					navigationTypes: this.context.parameters.NavigationTypes?.raw === 'primary' ? 'primary' : this.context.parameters.NavigationTypes?.raw === 'none' ? 'none' : 'all',
+					firstDayOfWeek: this.context.userSettings?.dateFormattingInfo?.firstDayOfWeek,
+					isRTL: this.context.userSettings?.isRTL,
 				},
 				selectionCountOverride: native?.selectedCount,
 				selectionResetVersion: this.nativeSelectionReset,
@@ -1494,6 +1537,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 				columnOptions: this.columnOptions,
 				lookupTargetEntityMap: this.lookupTargetEntityMap,
 				onSearchLookup: this.onSearchLookup,
+				onBrowseLookup: this.context.parameters.EnableLookupDialog?.raw !== false && typeof this.context.utils?.lookupObjects === 'function' ? this.onBrowseLookup : undefined,
 				onUpdateLookupCell: this.onUpdateLookupCell,
 				onSelectAllRecords: this.onSelectAllRecords,
 				setSelectedRecords: this.setSelectedRecords,

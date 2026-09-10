@@ -48,6 +48,24 @@ time-zone/fiscal-boundary acceptance test of every expected record ID.
 
 ## Important differences
 
+### Preserved Excel behaviour and new shortcuts
+
+The checklist, search, dotted guides, condition editor and filter chips are kept.
+Hold Shift while choosing an existing sort direction to add/change that column's
+priority without replacing the other sorts; Clear sort removes only its column.
+The rejected Add to current sort menu item remains absent.
+
+The optional alphabet bar adds a separate starts-with condition to the primary
+sorted text column. All removes that condition only; it leaves the Excel filter
+on the same column and all other columns intact. A numeric/date sort disables A–Z.
+
+Keyboard arrows/Home/End/PageUp/PageDown move cells, Shift extends the range and
+Ctrl+C copies it as quoted TSV. Ctrl+End stops at the last loaded row; moving down
+past the loaded boundary can fetch another page. Hidden collapsed-group rows are
+excluded. Filters are never persisted to browser storage by the layout feature.
+
+### Remaining differences
+
 - The checkbox picker lists values from **loaded records**, plus retained choices
   from the applied filter. It is not a full-table distinct-value query. Conditions
   submitted to Dataverse filter the dataset on the server, not just loaded rows.
@@ -67,8 +85,8 @@ time-zone/fiscal-boundary acceptance test of every expected record ID.
   root text matching; filters and expansion are in-memory, not saved views.
 - Related-table advanced-find conditions, hierarchy conditions, multi-select
   choice operators, Excel colour filters, Top 10, and date-tree checkbox grouping
-  are not implemented by this menu. Use the native Power Apps grid/view designer
-  when those capabilities are required.
+  are not implemented by this menu. DrivenGrid remains the chosen independent PCF;
+  these are explicit gaps, not a reason to replace it with Microsoft's grid.
 - Lookup/choice menus still have four conditions. The six label-pattern conditions
   seen in native lookup/Status Reason menus are not implemented; text matching a
   lookup GUID or numeric choice code would not reproduce label matching.

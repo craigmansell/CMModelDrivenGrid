@@ -1,4 +1,4 @@
-import { FilterExpression } from './filtering';
+import { FilterExpression, publicDatasetFilter } from './filtering';
 import { appendFetchFilter, childGuid, childLogicalName } from './childRecords';
 import { extraDateOperatorIds } from './dateConditions';
 
@@ -28,10 +28,10 @@ export function needsFilterCompilation(filter: FilterExpression | undefined): bo
  */
 export function supportedFilterSuperset(filter: FilterExpression | undefined, columns: Column[]): FilterExpression | undefined {
     if (!filter) return undefined;
-    if (!needsFilterCompilation(filter)) return filter;
+    if (!needsFilterCompilation(filter)) return publicDatasetFilter(filter);
     const parts: (FilterExpression | undefined)[] = [
         ...(filter.conditions ?? []).map((condition): FilterExpression | undefined => needsServerCondition(condition) ? undefined
-            : {filterOperator:0,conditions:[{...condition}]}),
+            : publicDatasetFilter({filterOperator:0,conditions:[{...condition}]})),
         ...(filter.filters ?? []).map(child => supportedFilterSuperset(child,columns)),
     ];
     if (!parts.length || (filter.filterOperator === 1 && parts.some(part => !part))) return undefined;

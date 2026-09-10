@@ -270,11 +270,16 @@ async function testSingleColumnSortMenu(): Promise<void> {
 		await Promise.resolve();
 	});
 	const callout = document.querySelector(".cm-grid-column-callout");
-	assert(!!callout && !callout.textContent?.includes("Add to current sort"), "The column menu must not offer additive sorting.");
+	assert(!!callout && !callout.textContent?.includes("Add to current sort"), "The rejected Add to current sort item must stay absent.");
 	const ascending = Array.from(callout?.querySelectorAll("button") ?? []).find((button) => button.querySelector(".ms-Button-label")?.textContent === "A to Z");
 	assert(!!ascending, "Ascending sort action must remain available.");
 	await act(async () => { Simulate.click(ascending as Element); await Promise.resolve(); });
 	assert(sortCalls.length === 1 && sortCalls[0].name === "name" && sortCalls[0].direction === "asc" && !sortCalls[0].additive, "A new column sort must replace, not append to, the current sort.");
+	await act(async()=>{updateGrid({sortedRecordIds:['a']});});
+	await act(async()=>{(container.querySelector('.ms-DetailsHeader-cell:not(.ms-DetailsHeader-cellIsCheck) .ms-DetailsHeader-cellTitle') as HTMLElement).click();});
+	const shifted=Array.from(document.querySelectorAll('.cm-grid-column-callout button')).find(button=>button.textContent?.includes('Z to A'))!;
+	await act(async()=>{Simulate.click(shifted,{shiftKey:true});});
+	assert(sortCalls[1]?.additive === true && sortCalls[1]?.direction === 'desc','Holding Shift on a direction must use additive sorting without an extra menu item.');
 }
 
 async function testColumnFillOnResize(): Promise<void> {
@@ -288,16 +293,17 @@ async function testColumnFillOnResize(): Promise<void> {
 	assert(headerWidth() === 1400, `Resizing must update Fluent's cached widths, got ${headerWidth()}.`);
 }
 
-async function testInfiniteScrollManualFallback(): Promise<void> {
+async function testInfiniteScrollDistanceFallback(): Promise<void> {
 	const previousObserver = globalThis.IntersectionObserver;
 	Object.defineProperty(globalThis, "IntersectionObserver", { value: undefined, configurable: true, writable: true });
 	let loadCalls = 0;
 	try {
 		await act(async () => { renderGrid({ infiniteScroll: true, hasNextPage: true, loadNextPage: () => { loadCalls++; } }); });
 		const button = Array.from(container.querySelectorAll("button")).find((element) => element.textContent?.trim() === "Load more");
-		assert(!!button, "Hosts without IntersectionObserver must retain a manual paging fallback.");
-		await act(async () => { Simulate.click(button as Element); });
-		assert(loadCalls === 1, "Manual fallback must request one page.");
+		assert(!button, "Automatic scrolling must never require a Load more button.");
+		const port = container.querySelector('.ms-ScrollablePane--contentContainer') as HTMLElement;
+		await act(async () => {port.scrollTop=500; port.dispatchEvent(new dom.window.Event('scroll'));});
+		assert(loadCalls === 1, "Scroll-distance fallback must request one page even without IntersectionObserver.");
 	} finally {
 		Object.defineProperty(globalThis, "IntersectionObserver", { value: previousObserver, configurable: true, writable: true });
 	}
@@ -476,6 +482,8 @@ async function testInfiniteScrollIdentityGuard(): Promise<void> {
 async function run(): Promise<void> {
 	console.log('Checking grouping, complete totals and compact-list parity...');
 	await testPresentationParity();
+	await testExcelAdditions();
+	await testLookupInteractionSafety();
 	console.log('Checking full-view and bounded Select All...');
 	await testBoundedSelectAll();
 	console.log('Checking retained child panels...');
@@ -495,7 +503,7 @@ async function run(): Promise<void> {
 	await testExcelSearchApplyAndCancel();
 	await testSingleColumnSortMenu();
 	await testColumnFillOnResize();
-	await testInfiniteScrollManualFallback();
+	await testInfiniteScrollDistanceFallback();
 	await testInfiniteScrollEmptyPageRetry();
 	await testUnsupportedEditAndUntouchedDropdown();
 	await testClipboardFocusGuard();
@@ -784,17 +792,18 @@ async function testPresentationParity(): Promise<void> {
 	await act(async()=>{updateGrid({hasNextPage:false,itemsLoading:false});});
 	assert(container.querySelector('[aria-label="Totals — all matching records"]')?.textContent?.includes('30'),'Complete sum must include all non-blank values.');
 	assert(container.querySelectorAll('.ms-GroupHeader').length === 2,'Group by raw choices must render both groups.');
+	assert(container.querySelectorAll('.ms-GroupHeader-expand[aria-expanded="false"]').length === 2,'New groups must start collapsed.');
 	const collapse=container.querySelector('.ms-GroupHeader-expand') as HTMLElement;
 	await act(async()=>{collapse.click();});
-	assert((cache.get('collapsedGroups') as Set<string>).size===1,'Group collapse must be retained in level state.');
+	assert(Object.values(cache.get('groupCollapse') as Record<string,boolean>).filter(value=>!value).length===1,'Group expansion must be retained in level state.');
 	const collapseAll = container.querySelector('.ms-DetailsHeader-collapseButton') as HTMLElement;
 	assert(!!collapseAll, 'Grouped columns must expose the global collapse control.');
 	await act(async()=>{collapseAll.click();});
-	assert((cache.get('collapsedGroups') as Set<string>).size===2, 'Collapse all must retain every group key.');
+	assert(Object.values(cache.get('groupCollapse') as Record<string,boolean>).filter(Boolean).length===2, 'Collapse all must retain every group key.');
 	await act(async()=>{updateGrid({selectionCountOverride:1});});
 	assert(container.querySelectorAll('.ms-GroupHeader-expand[aria-expanded="false"]').length===2, 'An unrelated update must not reopen globally collapsed groups.');
 	await act(async()=>{collapseAll.click();});
-	assert((cache.get('collapsedGroups') as Set<string>).size===0, 'Expand all must clear retained collapse state.');
+	assert(Object.values(cache.get('groupCollapse') as Record<string,boolean>).every(value=>!value), 'Expand all must clear retained collapse state.');
 	await act(async()=>{updateGrid({dataError:'Page failed'});});
 	assert(!container.querySelector('[aria-label="Totals — all matching records"]'),'A failed child page must not produce a complete-looking total.');
 	await act(async()=>{updateGrid({dataError:undefined,features:{enableGrouping:false,enableAggregation:false}});});
@@ -810,6 +819,68 @@ async function testPresentationParity(): Promise<void> {
 	assert(selected.join()==='b','Single-selection setting must replace, not append, the selected ID.');
 	await act(async()=>{renderGrid({columns,records,sortedRecordIds:['a','b','c'],infiniteScroll:true,totalResultCount:-1,hasNextPage:true});});
 	assert(container.querySelector('.cm-grid-record-count')?.textContent?.includes('3+'), 'An unknown count must describe loaded records, not invent 5,000 matches.');
+}
+
+async function testExcelAdditions(): Promise<void> {
+	const {updateColumnFilter,getColumnConditions} = require('../CMModelDrivenGrid/filtering') as typeof import('../CMModelDrivenGrid/filtering');
+	const columns=[{name:'name',displayName:'Name',dataType:'SingleLine.Text',order:0,isPrimary:true},{name:'amount',displayName:'Amount',dataType:'Decimal',order:1}] as ComponentFramework.PropertyHelper.DataSetApi.Column[];
+	const records={a:makeRecord('a',{name:'Alpha blue',amount:10},{name:'Alpha blue',amount:'10'})};
+	const base=updateColumnFilter(undefined,'name','contains','blue');
+	let filter=base;
+	await act(async()=>{renderGrid({columns,records,sortedRecordIds:['a'],features:{enableJumpBar:true},filtering:filter!,onFilter:(name,mode,value)=>{filter=updateColumnFilter(filter,name,mode,value);updateGrid({filtering:filter!,records:{...records},sortedRecordIds:['a']});}});});
+	const jump=(letter:string)=>Array.from(container.querySelectorAll<HTMLButtonElement>('.cm-grid-jump-bar button')).find(button=>button.textContent===letter)!;
+	await act(async()=>{jump('A').click();});
+	assert(getColumnConditions(filter,'name').length===2,'Jump bar must keep the Excel filter on the same column.');
+	await act(async()=>{jump('All').click();});
+	assert(JSON.stringify(filter)===JSON.stringify(base),'Jump All must restore the exact non-alphabet filter.');
+	await act(async()=>{updateGrid({sorting:[{name:'amount',sortDirection:0}]});});
+	assert(jump('A').disabled,'Alphabet buttons must be disabled on a numeric sort.');
+	const layoutKey='regression:org:user:view';
+	await act(async()=>{renderGrid({columns,records,sortedRecordIds:['a'],layoutKey,stateCache:new Map([['columnOrder',['amount','name']],['widths',{amount:200}]])});});
+	await act(async()=>{renderGrid({columns,records,sortedRecordIds:['a'],layoutKey});});
+	const order=Array.from(container.querySelectorAll('.ms-DetailsHeader-cellTitle')).map(header=>header.textContent);
+	assert(order[0]?.includes('Amount')===true,'Column order must survive a fresh grid mount for the same scope.');
+	await act(async()=>{renderGrid({columns,records,sortedRecordIds:['a'],layoutKey:'different:user:view'});});
+	assert(container.querySelector('.ms-DetailsHeader-cellTitle')?.textContent?.includes('Name')===true,'A different user/view must not inherit the layout.');
+	let opened=0;
+	await act(async()=>{renderGrid({columns,records,sortedRecordIds:['a'],enableLookupLinks:true,features:{navigationTypes:'primary'},onNavigate:()=>{opened++;}});});
+	const primary=container.querySelector('[aria-label="Name: Alpha blue"] a') as HTMLElement;
+	assert(!!primary,'Primary-only navigation must link an ordinary primary text column.');
+	await act(async()=>{primary.click();}); assert(opened===1,'Primary name link must open the actual row.');
+	await act(async()=>{updateGrid({features:{navigationTypes:'none'}});});
+	assert(!container.querySelector('[aria-label="Name: Alpha blue"] a'),'Navigation none must remove primary links.');
+	await act(async()=>{updateGrid({features:{navigationTypes:'none',reflow:'list'}});});
+	assert(!container.querySelector('.cm-grid-record-link'),'Navigation none must also remove compact-list record links.');
+}
+
+async function testLookupInteractionSafety(): Promise<void> {
+	const column={name:'lookup',displayName:'Lookup',dataType:'Lookup.Simple',order:0,alias:'lookup',visualSizeFactor:180,targets:['contact']} as ComponentFramework.PropertyHelper.DataSetApi.Column;
+	const records={a:makeRecord('a',{lookup:{id:'old',entityType:'contact',name:'Old'}},{lookup:'Old'})};
+	let writes:string[]=[];
+	let resolveBrowse:(value:{id:string;name:string}|undefined)=>void=()=>undefined;
+	const open=async()=>{
+		await act(async()=>{renderGrid({columns:[column],records,sortedRecordIds:['a'],onSearchLookup:async()=>[{id:'new',name:'New name'}],onBrowseLookup:()=>new Promise(resolve=>{resolveBrowse=resolve;}),onUpdateLookupCell:async(_row,_col,id)=>{writes.push(id);}});});
+		await act(async()=>{await new Promise(resolve=>setTimeout(resolve,25));});
+		await act(async()=>{Simulate.doubleClick(container.querySelector('[aria-label="Lookup: Old"]')!); await Promise.resolve();});
+	};
+	await open();
+	await act(async()=>{Simulate.keyDown(container.querySelector('input')!,{key:'Tab'});});
+	assert(writes.length===0,'Tab must not silently accept the first lookup search result.');
+	await open();
+	await act(async()=>{Simulate.keyDown(container.querySelector('input')!,{key:'ArrowDown'});});
+	assert(container.querySelector('input')?.getAttribute('aria-activedescendant')?.includes('results-')===true,'Lookup keyboard result must be announced accessibly.');
+	await act(async()=>{Simulate.keyDown(container.querySelector('input')!,{key:'Enter'});await Promise.resolve();});
+	assert(writes.join()==='new','ArrowDown + Enter must accept the explicitly highlighted lookup exactly once.');
+	writes=[]; await open();
+	const more=()=>Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(button=>button.textContent?.includes('More records'))!;
+	await act(async()=>{more().click();});
+	await act(async()=>{Simulate.blur(container.querySelector('input')!);await new Promise(resolve=>setTimeout(resolve,250));resolveBrowse(undefined);await Promise.resolve();});
+	assert(writes.length===0 && !!container.querySelector('input') && document.activeElement===container.querySelector('input'),'Cancel full lookup must preserve the editor and refocus it, not clear the value.');
+	await act(async()=>{more().click();resolveBrowse({id:'chosen',name:'Chosen'});await Promise.resolve();});
+	assert(writes.join()==='chosen','Full dialog choice must use the existing guarded save path once.');
+	writes=[]; await open();
+	await act(async()=>{more().click();ReactDOM.unmountComponentAtNode(container);resolveBrowse({id:'late',name:'Late'});await Promise.resolve();});
+	assert(writes.length===0,'A dialog closing after unmount must not save.');
 }
 
 run()

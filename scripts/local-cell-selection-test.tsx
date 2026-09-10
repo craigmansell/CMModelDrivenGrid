@@ -41,7 +41,7 @@ Object.defineProperty(globalThis.window, "getComputedStyle", {
 			paddingLeft: "0px",
 			paddingRight: "0px",
 			getPropertyValue: () => "",
-		}) as CSSStyleDeclaration,
+		}) as unknown as CSSStyleDeclaration,
 	configurable: true,
 });
 
@@ -208,6 +208,7 @@ async function run(): Promise<void> {
 				onSelectAllRecords: async () => undefined,
 				onSort: () => undefined,
 				onFilter: () => undefined,
+				onClearAllFilters: () => undefined,
 				loadFirstPage: () => undefined,
 				loadNextPage: () => undefined,
 				loadPreviousPage: () => undefined,
@@ -316,6 +317,19 @@ async function run(): Promise<void> {
 	const cells0 = lines[0].split("\t");
 	assert(cells0.length === 2, `Expected 2 tab-separated values in row 0, got ${cells0.length}`);
 	console.log("  PASS: Ctrl+C produced 2×2 TSV");
+	// Keyboard ranges use the same Excel rectangle and clipboard contract.
+	await act(async()=>{Simulate.keyDown(cells[0],{key:'ArrowRight',shiftKey:true}); await Promise.resolve();});
+	assert(document.activeElement?.getAttribute('data-cm-cell-col') === '1','Arrow key must focus the adjacent cell.');
+	await act(async()=>{Simulate.keyDown(document.activeElement as Element,{key:'Home',ctrlKey:true}); await Promise.resolve();});
+	await act(async()=>{Simulate.keyDown(document.activeElement as Element,{key:'End',ctrlKey:true,shiftKey:true}); await Promise.resolve();});
+	clipboardText='';
+	await act(async()=>{document.activeElement?.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'c',ctrlKey:true,bubbles:true})); await Promise.resolve();});
+	assert(clipboardText === 'A1\tB1\r\nA2\tB2','Ctrl+Shift+End must extend a copyable range to the last loaded cell.');
+	await act(async()=>{Simulate.keyDown(document.activeElement as Element,{key:'Escape'});});
+	clipboardText='';
+	await act(async()=>{document.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'c',ctrlKey:true,bubbles:true})); await Promise.resolve();});
+	assert(!clipboardText,'Escape must clear the keyboard range.');
+	await act(async()=>{Simulate.mouseDown(cells[0],{button:0});});
 	Object.defineProperty(navigator, 'clipboard', {value: {writeText: async () => {throw new Error('Clipboard denied');}}, configurable:true});
 	await act(async()=>{document.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'c',ctrlKey:true,bubbles:true})); await Promise.resolve();});
 	assert(container.querySelector('[role="alert"]')?.textContent?.includes('Unable to copy') === true, 'Denied clipboard access must show a useful error.');

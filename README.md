@@ -6,8 +6,8 @@ sample and now adds editable cells, lookup links and lookup search, richer filte
 multi-cell copy, record highlighting, configurable paging, and optional infinite
 scrolling.
 
-**Candidate 1.0.111 / unmanaged solution 1.0.90.0 is not deployed.** The sandbox
-still runs 1.0.110 / 1.0.89.0. See the [full updated feature comparison](FULL-FEATURE-COMPARISON-2026-09-10.md)
+**Candidate 1.0.112 / unmanaged solution 1.0.91.0 is not deployed.** The last verified
+sandbox release is 1.0.110 / 1.0.89.0. See the [full updated feature comparison](FULL-FEATURE-COMPARISON-2026-09-10.md)
 for local checks, earlier live evidence and remaining native-grid differences.
 
 ## Main capabilities
@@ -22,6 +22,9 @@ for local checks, earlier live evidence and remaining native-grid differences.
 - Group a complete grid level and display sum, average, minimum and maximum.
 - Move columns, enter precise content widths, and use a compact responsive list.
 - Configure selection/filter/sort capabilities, choice colours, type icons and labels.
+- Keep the Excel-style searchable checklist/dotted guides and extend cell ranges with Shift + arrows.
+- Group dates by day, week, month, quarter or year; remember column layouts in this browser.
+- Optionally show an A–Z jump bar without replacing other filters, and use the supported full lookup dialog.
 
 Inline editing uses the Dataverse Web API and still respects the current user's table
 and column privileges. Related-table/aliased columns, unsupported data types, and
@@ -41,10 +44,35 @@ keep the previous filter and show an error.
 The column menu now includes type-specific sorting and a two-condition AND/OR
 filter editor. Numeric columns offer comparisons and ranges; date columns include
 calendar and relative-date filters. Selecting a new sort replaces the previous
-sort while retaining filters. See [filter and sorting behaviour](FILTERS-AND-SORTING.md) for the
+sort while retaining filters. Hold Shift when choosing a direction to keep other sort columns;
+there is no Add to current sort menu item. See [filter and sorting behaviour](FILTERS-AND-SORTING.md) for the
 supported options and differences from the native Power Apps grid and Excel.
 
 ## Configuration
+
+### Excel-preserving additions (1.0.112)
+
+`EnableJumpBar` defaults to false; when enabled its All button removes only the
+alphabet constraint. Sort by a text column to enable A–Z.
+`RememberColumnLayout` defaults to true; widths/order are saved per user/table/view
+in this browser, with separate root and child layouts. Reset them through Column
+options → Reset column layout. This does not save a Dataverse personal view.
+`NavigationTypes` accepts `all` (default), `primary` or `none`, gated by EnableLookupLinks.
+`EnableLookupDialog` defaults to true; More records opens the supported host lookup
+dialog for the cell's current target table. Returned records are checked against
+LookupFilterConfig before saving. This is not a replacement of the grid itself.
+
+Arrows move between cells; Shift extends a rectangle; Home/End move within the row;
+Ctrl+Home/End move to the first/last **loaded** cell. PageUp/PageDown move a viewport,
+and stepping past a loaded-page boundary can fetch the next page. Ctrl+C retains
+Excel-compatible quoted TSV. Escape clears the range; F2, Space or Enter opens an
+editable cell. Lookup ArrowDown/Up highlights results and Enter accepts the choice;
+Tab does not silently select the first result. Collapsed-group rows are not copied.
+
+Date groups appear under Column options → Group dates by. New groups are collapsed.
+Dates without a time do not shift timezone; DateTime grouping currently uses the
+browser's calendar timezone, so acceptance against a different Dataverse user timezone
+or TimeZoneIndependent column remains outstanding.
 
 ### Expandable child rows
 
@@ -58,7 +86,7 @@ The owner explicitly rejected a separate child toolbar: all record actions must 
 
 Enable `EnableChildRows`, set `ChildParentLookup` to the self-referencing lookup logical name, and set `ChildViewId` to a public view GUID of the same table. The child view must include the same columns as the parent grid and must not exclude children. For Item Template Options use `cm_parenttemplateoption` and the existing **Sub Options** view.
 
-For native child commands, additionally enable `EnableNativeChildSelection` and bind the main dataset to a **dedicated view that includes both roots and children**. Do not enable this setting on a view that filters the parent lookup to null. The sandbox deployment helper clones Options as **DrivenGrid hierarchy options**, preserves its active-record condition, ordering and nine visible columns, and adds the hidden parent/name attributes. Only the target Item Template subgrid is rebound; the shared Options view and relationship remain unchanged. The PCF applies root-only filters internally, temporarily admitting explicitly selected child IDs and hiding those child rows from the root display. Root sorting/filtering and child-panel filters remain independent. The current candidate selects the first 1,000 matching records when a level is larger; filter or sort to choose another subset. Native selection preparation is serialised, cancelled by newer requests and checked for missing/rejected targets. Local strict-host, root-cache and refresh tests pass. Signed-in sandbox checks for the earlier 1.0.104 release confirmed native child commands, exact-child Edit navigation, multi-selection, level switching, collapse cleanup and independent root/child filtering. Native asynchronous permission rules can take a moment to settle after selection. Destructive and data-changing commands were not executed during that read-only smoke test. Candidate 1.0.111 still needs its own signed-in acceptance.
+For native child commands, additionally enable `EnableNativeChildSelection` and bind the main dataset to a **dedicated view that includes both roots and children**. Do not enable this setting on a view that filters the parent lookup to null. The sandbox deployment helper clones Options as **DrivenGrid hierarchy options**, preserves its active-record condition, ordering and nine visible columns, and adds the hidden parent/name attributes. Only the target Item Template subgrid is rebound; the shared Options view and relationship remain unchanged. The PCF applies root-only filters internally, temporarily admitting explicitly selected child IDs and hiding those child rows from the root display. Root sorting/filtering and child-panel filters remain independent. The current candidate selects the first 1,000 matching records when a level is larger; filter or sort to choose another subset. Native selection preparation is serialised, cancelled by newer requests and checked for missing/rejected targets. Local strict-host, root-cache and refresh tests pass. Signed-in sandbox checks for the earlier 1.0.104 release confirmed native child commands, exact-child Edit navigation, multi-selection, level switching, collapse cleanup and independent root/child filtering. Native asynchronous permission rules can take a moment to settle after selection. Destructive and data-changing commands were not executed during that read-only smoke test. Candidate 1.0.112 still needs its own signed-in acceptance.
 
 Children load on expansion, with independent sorting, filtering, editing, refresh and infinite scrolling. Filters on the main grid affect parents only; use each child grid's menus to filter its children. Nested levels are supported with cycle protection. Candidate Child Select All pages the matching direct children up to 1,000, not just loaded children. Child paging retains server continuation cookies and has a 1,000-page safety guard; narrow filters if it is reached. Expand arrows appear only on rows with accessible children in the configured child view. Distinct-parent checks are batched and cached per refresh, without downloading each child grid. Leaves retain their aligned selection checkbox; native Refresh rechecks added/removed children. A failed existence check shows an error and never pretends that the row is confirmed empty.
 

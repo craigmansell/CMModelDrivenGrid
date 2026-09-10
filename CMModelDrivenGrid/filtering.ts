@@ -49,7 +49,38 @@ export type FilterRuleMode =
 	| "lastXMonths"
 	| "nextXMonths";
 
-export type FilterMode = FilterRuleMode | "in" | "clear" | "custom";
+export type FilterMode = FilterRuleMode | "in" | "clear" | "custom" | "jump";
+
+type JumpCondition = DataSetConditionExpression & { cmJumpBar?: true };
+export function getJumpFilter(filter: FilterExpression | undefined): {column: string; letter: string} | undefined {
+	const condition = filter?.conditions?.find(condition => (condition as JumpCondition).cmJumpBar);
+	if (condition) return {column: condition.attributeName, letter: String(condition.value).slice(0, -1)};
+	for (const child of filter?.filters ?? []) { const found = getJumpFilter(child); if (found) return found; }
+	return undefined;
+}
+
+/** The jump bar is an additional AND condition, not a replacement for an Excel column filter. */
+function updateJumpFilter(filter: FilterExpression | undefined, columnName: string, letter: FilterValue | undefined): FilterExpression | undefined {
+	if (letter !== undefined && letter !== '' && (typeof letter !== 'string' || !/^[A-Z]$/.test(letter))) throw new Error('Choose a letter from A to Z.');
+	const removeJump = (current: FilterExpression | undefined): FilterExpression | undefined => {
+		if (!current) return undefined;
+		const conditions = (current.conditions ?? []).filter(condition => !(condition as JumpCondition).cmJumpBar);
+		const filters = (current.filters ?? []).map(removeJump).filter((child): child is FilterExpression => !!child);
+		return conditions.length || filters.length ? {...current, conditions, ...(current.filters ? {filters} : {})} : undefined;
+	};
+	const cleaned = removeJump(filter);
+	if (!letter) return cleaned;
+	const condition: JumpCondition = {attributeName: columnName, conditionOperator: 6, value: `${letter}%`, cmJumpBar: true};
+	return appendFilter(cleaned, {filterOperator: 0, conditions: [condition]});
+}
+
+/** Keep our jump-bar marker out of the public dataset API. FetchXML also uses only SDK fields. */
+export function publicDatasetFilter(filter: FilterExpression): FilterExpression {
+	if (!getJumpFilter(filter)) return filter;
+	return {...filter, conditions: (filter.conditions ?? []).map(condition => {
+		const clean = {...condition} as JumpCondition; delete clean.cmJumpBar; return clean;
+	}), ...(filter.filters ? {filters: filter.filters.map(publicDatasetFilter)} : {})};
+}
 
 export interface ColumnFilterRule {
 	mode: FilterRuleMode;
@@ -536,6 +567,7 @@ export function updateColumnFilter(
 	mode: FilterMode,
 	value?: FilterValue
 ): FilterExpression | undefined {
+	if (mode === 'jump') return updateJumpFilter(asFilter(current), columnName, value);
 	let validatedCustom: ColumnFilterGroup | undefined;
 	if (mode === "custom") validatedCustom = validateCustomGroup(value);
 

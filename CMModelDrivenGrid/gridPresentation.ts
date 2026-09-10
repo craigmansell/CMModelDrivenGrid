@@ -15,6 +15,12 @@ export interface GridFeatures {
     showAvatar?: boolean;
     showListColumnNames?: boolean;
     bandedListRows?: boolean;
+    enableJumpBar?: boolean;
+    navigationTypes?: 'all' | 'primary' | 'none';
+    firstDayOfWeek?: number;
+    locale?: string;
+    isRTL?: boolean;
+    dateTimeOffsetMinutes?: (date: Date) => number;
 }
 
 export type AggregateMode = 'sum' | 'average' | 'minimum' | 'maximum';
@@ -50,15 +56,15 @@ export function groupingKey(value: string | null): string {
 }
 
 /** Group by raw values/IDs: two lookups with the same display name stay distinct. */
-export function groupRecords<T>(records: readonly T[], getKey: (row: T) => string, getLabel: (row: T) => string) {
-    const buckets = new Map<string, { key: string; name: string; rows: T[] }>();
+export function groupRecords<T>(records: readonly T[], getKey: (row: T) => string, getLabel: (row: T) => string, getSortKey?: (row: T) => string) {
+    const buckets = new Map<string, { key: string; name: string; rows: T[]; sortKey?: string }>();
     for (const row of records) {
         const key = getKey(row);
-        const bucket = buckets.get(key) ?? { key, name: getLabel(row) || '(Blanks)', rows: [] };
+        const bucket = buckets.get(key) ?? { key, name: getLabel(row) || '(Blanks)', rows: [], sortKey: getSortKey?.(row) };
         bucket.rows.push(row); buckets.set(key, bucket);
     }
     const items: T[] = [];
-    const groups = [...buckets.values()].sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'})).map(bucket => {
+    const groups = [...buckets.values()].sort((a,b) => getSortKey ? (a.sortKey ?? '').localeCompare(b.sortKey ?? '') : a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'})).map(bucket => {
         const group = {key: bucket.key, name: bucket.name, startIndex: items.length, count: bucket.rows.length};
         items.push(...bucket.rows); return group;
     });

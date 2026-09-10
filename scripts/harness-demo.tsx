@@ -160,7 +160,8 @@ function Demo(): React.ReactElement {
             </div>
             {commandError && <div role="alert">{commandError}</div>}
             <div className="demo-grid"><Grid key={generation} columns={columns} records={records} sortedRecordIds={ids} selectionResetVersion={childRefresh}
-                features={{reflow:new URLSearchParams(window.location.search).get('layout') === 'list' ? 'list' : 'auto', showAvatar:true, showTypeIcons:true, showChoiceColors:true}}
+                layoutKey="local-demo:projects:v1"
+                features={{reflow:new URLSearchParams(window.location.search).get('layout') === 'list' ? 'list' : 'auto', showAvatar:true, showTypeIcons:true, showChoiceColors:true, enableJumpBar:true, locale:'en-GB', firstDayOfWeek:1}}
                 childRows={{loadPage:loadChildren,hasChildren:checkChildren,revision:childRefresh,readOnly:childReadOnly}}
                 hasNextPage={limit < filteredRows.length} hasPreviousPage={false} totalResultCount={filteredRows.length} currentPage={1}
                 sorting={sorting} filtering={filter!} resources={resources} itemsLoading={loading}

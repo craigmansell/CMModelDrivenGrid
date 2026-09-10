@@ -309,4 +309,12 @@
   <data name="BandedListRows_Description" xml:space="preserve"><value>Use alternate shading in compact list rows.</value></data>
   <data name="AccessibleLabel_Display" xml:space="preserve"><value>Accessible grid label</value></data>
   <data name="AccessibleLabel_Description" xml:space="preserve"><value>Screen-reader label for this grid.</value></data>
+  <data name="EnableJumpBar_Display" xml:space="preserve"><value>Show alphabet jump bar</value></data>
+  <data name="EnableJumpBar_Description" xml:space="preserve"><value>Show A-Z for the primary sorted text column. Keeps other filters; All removes only the alphabet condition.</value></data>
+  <data name="RememberColumnLayout_Display" xml:space="preserve"><value>Remember column layout</value></data>
+  <data name="RememberColumnLayout_Description" xml:space="preserve"><value>Remember widths and order in this browser for this user, table and view. No record data or filters are stored.</value></data>
+  <data name="NavigationTypes_Display" xml:space="preserve"><value>Lookup navigation</value></data>
+  <data name="NavigationTypes_Description" xml:space="preserve"><value>Use all, primary or none for lookup links. Enable lookup links must also be enabled.</value></data>
+  <data name="EnableLookupDialog_Display" xml:space="preserve"><value>Allow full lookup dialog</value></data>
+  <data name="EnableLookupDialog_Description" xml:space="preserve"><value>Add More records to lookup editing using the supported Power Apps lookup dialog. Selected records are checked against configured restrictions before saving.</value></data>
 </root>

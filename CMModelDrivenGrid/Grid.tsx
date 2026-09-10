@@ -1,4 +1,4 @@
-import { useConst, useForceUpdate } from "@fluentui/react-hooks";
+import { useConst, useForceUpdate, useId } from "@fluentui/react-hooks";
 import * as React from "react";
 import { GridStateCache, useGridState } from './gridState';
 import * as ReactDOM from "react-dom";
@@ -36,6 +36,10 @@ import { ColumnFilterEditor } from "./ColumnFilterEditor";
 import { fillColumnWidths } from "./columnSizing";
 import { serializeGridClipboard } from './clipboard';
 import { GridFeatures, moveColumn, reconcileColumnOrder, numericColumnWidth, AggregateMode, aggregateNumbers, groupRecords, groupingKey, columnTypeIcon, choiceColorStyle } from './gridPresentation';
+import { dateGroup, DateGroupingInterval, dateGroupingIntervals } from './dateGrouping';
+import { readColumnLayout, writeColumnLayout, allowLookupNavigation } from './layoutPreferences';
+import { getJumpFilter } from './filtering';
+import { navigateCell } from './cellNavigation';
 import { Dialog, DialogFooter } from '@fluentui/react/lib/Dialog';
 import { GroupHeader, IGroup } from '@fluentui/react/lib/GroupedList';
 import { createRecordSelection, MAX_SELECTED_RECORDS, SelectAllRequest, SelectAllResult, selectionResult } from './recordSelection';
@@ -158,6 +162,8 @@ function createFilterValueOption(label: string, rawValue: unknown): FilterValueO
 
 export interface GridProps {
 	features?: GridFeatures;
+	/** User/org/table/view-scoped presentation only. Omit to disable browser persistence. */
+	layoutKey?: string;
 	dataError?: string;
 	stateCache?: GridStateCache;
 	selectedRecordIds?: string[];
@@ -210,6 +216,7 @@ export interface GridProps {
 		columnName?: string,
 		recordId?: string
 	) => Promise<{ id: string; name: string }[]>;
+	onBrowseLookup?: (entityType: string, searchTerm: string, columnName: string, recordId: string) => Promise<{id: string; name: string} | undefined>;
 	infiniteScroll?: boolean;
 	item?: DataSet;
 }
@@ -339,11 +346,12 @@ interface EditingLookupProps {
 	initialDisplayValue?: string | null;
 	ariaLabel?: string;
 	onSearch: (term: string) => Promise<{ id: string; name: string }[]>;
+	onBrowse?: (term: string) => Promise<{id: string; name: string} | undefined>;
 	onCommit: (id: string, name: string) => void;
 	onCancel: () => void;
 }
 
-const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, ariaLabel, onSearch, onCommit, onCancel }) => {
+const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, ariaLabel, onSearch, onBrowse, onCommit, onCancel }) => {
 	const normalizedInitialDisplayValue = initialDisplayValue ?? "";
 	const [searchTerm, setSearchTerm] = React.useState(normalizedInitialDisplayValue);
 	const [results, setResults] = React.useState<{ id: string; name: string }[]>([]);
@@ -356,6 +364,11 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, aria
 	const searchRequestRef = React.useRef(0);
 	const isMountedRef = React.useRef(true);
 	const containerRef = React.useRef<HTMLDivElement>(null);
+	const browsingRef = React.useRef(false);
+	const [browsing, setBrowsing] = React.useState(false);
+	const [activeResult, setActiveResult] = React.useState(-1);
+	const resultListId = useId('cm-lookup-results-');
+	React.useEffect(() => {if (!browsing && !committedRef.current) containerRef.current?.querySelector('input')?.focus();}, [browsing]);
 
 	const performSearch = React.useCallback(
 		async (term: string) => {
@@ -366,6 +379,7 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, aria
 				const found = await onSearch(term);
 				if (!isMountedRef.current || requestId !== searchRequestRef.current) return;
 				setResults(found);
+				setActiveResult(-1);
 			} catch (err) {
 				if (!isMountedRef.current || requestId !== searchRequestRef.current) return;
 				setResults([]);
@@ -404,6 +418,8 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, aria
 
 	const handleChange = (_ev: React.FormEvent, newValue?: string) => {
 		const term = newValue ?? "";
+		// Do not let an old result remain selectable while a new query is debouncing.
+		searchRequestRef.current++; setResults([]); setActiveResult(-1); setIsSearching(true);
 		setSearchTerm(term);
 		if (debounceRef.current !== undefined) {
 			window.clearTimeout(debounceRef.current);
@@ -414,15 +430,26 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, aria
 	};
 
 	const handleKeyDown = (event: React.KeyboardEvent) => {
+		if (browsingRef.current) return;
+		if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+			event.preventDefault(); event.stopPropagation();
+			setActiveResult(current => Math.max(-1, Math.min(results.length - 1, current + (event.key === 'ArrowDown' ? 1 : -1))));
+			return;
+		}
+		if (event.key === 'Enter' && activeResult >= 0 && results[activeResult]) {
+			event.preventDefault(); event.stopPropagation(); handleSelect(results[activeResult].id, results[activeResult].name); return;
+		}
 		if (event.key === "Escape") {
 			event.preventDefault();
+			event.stopPropagation();
 			committedRef.current = true;
 			onCancel();
 		} else if (event.key === "Tab") {
 			event.preventDefault();
-			if (results.length > 0) {
-				handleSelect(results[0].id, results[0].name);
-			} else if (searchTerm.trim() === "") {
+			event.stopPropagation();
+			if (activeResult >= 0 && results[activeResult]) {
+				handleSelect(results[activeResult].id, results[activeResult].name);
+			} else if (searchTerm.trim() === "" && normalizedInitialDisplayValue !== '') {
 				handleSelect("", ""); // commit null
 			} else {
 				committedRef.current = true;
@@ -433,12 +460,13 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, aria
 
 	// Delay cancel so a mousedown on a result item fires before we cancel.
 	const handleBlur = () => {
+		if (browsingRef.current) return;
 		const termAtBlur = searchTerm;
 		blurRef.current = window.setTimeout(() => {
 			blurRef.current = undefined;
-			if (!committedRef.current) {
+			if (!committedRef.current && !browsingRef.current && isMountedRef.current) {
 				committedRef.current = true;
-				if (termAtBlur.trim() === "") {
+				if (termAtBlur.trim() === "" && normalizedInitialDisplayValue !== '') {
 					onCommit("", ""); // empty field → save as null
 				} else {
 					onCancel(); // non-empty but nothing selected → revert
@@ -452,12 +480,33 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, aria
 		committedRef.current = true;
 		onCommit(id, name);
 	};
+	const handleBrowse = async () => {
+		if (!onBrowse || browsingRef.current || committedRef.current) return;
+		browsingRef.current = true; setBrowsing(true); setSearchError(null);
+		if (blurRef.current !== undefined) window.clearTimeout(blurRef.current);
+		try {
+			const selected = await onBrowse(searchTerm);
+			if (isMountedRef.current && selected) handleSelect(selected.id, selected.name);
+		} catch (error) {
+			if (isMountedRef.current) setSearchError(error instanceof Error ? error.message : 'Unable to open record lookup.');
+		} finally {
+			browsingRef.current = false;
+			if (isMountedRef.current) {
+				setBrowsing(false);
+				if (!committedRef.current) containerRef.current?.querySelector('input')?.focus();
+			}
+		}
+	};
 
 	// Always render the dropdown once we have a position — shows spinner, error, results, or "no results".
 	const dropdownPortal =
-		dropdownRect !== null &&
+		dropdownRect !== null && !browsing &&
 		ReactDOM.createPortal(
 			<div
+				data-selection-disabled={true}
+				onClick={event => event.stopPropagation()}
+				onMouseDown={event => event.stopPropagation()}
+				onDoubleClick={event => event.stopPropagation()}
 				style={{
 					position: "fixed",
 					top: dropdownRect.bottom,
@@ -489,18 +538,22 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, aria
 						No results found
 					</Text>
 				)}
-				{!isSearching &&
+				<div id={resultListId} role="listbox" aria-label="Lookup results">{!isSearching &&
 					!searchError &&
-					results.map((r) => (
+					results.map((r, index) => (
 						<ActionButton
 							key={r.id}
-							styles={{ root: { width: "100%", textAlign: "left", height: 28, paddingLeft: 8 } }}
+							id={`${resultListId}-${index}`}
+							role="option" aria-selected={activeResult === index} tabIndex={-1}
+							styles={{ root: { width: "100%", textAlign: "left", height: 28, paddingLeft: 8, background: activeResult === index ? '#deecf9' : undefined } }}
+							aria-pressed={activeResult === index}
 							onMouseDown={(e) => e.preventDefault()}
 							onClick={() => handleSelect(r.id, r.name)}
 						>
 							{r.name}
 						</ActionButton>
-					))}
+					))}</div>
+				{onBrowse && <ActionButton text="More records…" iconProps={{iconName: 'Search'}} onMouseDown={event => event.preventDefault()} onClick={() => void handleBrowse()} />}
 			</div>,
 			document.body
 		);
@@ -511,13 +564,17 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, aria
 				<TextField
 					autoFocus
 					ariaLabel={ariaLabel}
+					role="combobox" aria-autocomplete="list" aria-expanded={!browsing} aria-controls={resultListId}
+					aria-activedescendant={activeResult >= 0 ? `${resultListId}-${activeResult}` : undefined}
 					borderless
 					value={searchTerm}
+					disabled={browsing}
 					styles={{ root: { flex: 1, minWidth: 0 }, fieldGroup: { minHeight: 24 } }}
 					onChange={handleChange}
 					onKeyDown={handleKeyDown}
 					onBlur={handleBlur}
 				/>			</div>
+			{browsing && <Spinner size={SpinnerSize.xSmall} label="Record lookup is open" />}
 			{dropdownPortal}
 		</>
 	);
@@ -538,7 +595,8 @@ const onRenderDetailsHeader: IRenderFunction<IDetailsHeaderProps> = (props, defa
 
 export const Grid = React.memo((props: GridProps) => {
 	const features = props.features ?? {};
-	const [columnOrder, setColumnOrder] = useGridState<string[]>(props.stateCache, 'columnOrder', () => []);
+	const initialLayout = useConst(() => readColumnLayout(props.layoutKey));
+	const [columnOrder, setColumnOrder] = useGridState<string[]>(props.stateCache, 'columnOrder', () => initialLayout?.order ?? []);
 	const [widthEditor, setWidthEditor] = React.useState<{key: string; label: string; value: string} | undefined>();
 	const [widthError, setWidthError] = React.useState('');
 	const hierarchySelectionGutter = !!props.renderChildRows && !props.disableSelection;
@@ -592,6 +650,7 @@ export const Grid = React.memo((props: GridProps) => {
 		lookupTargetEntityMap,
 		onSelectAllRecords,
 		onSearchLookup,
+		onBrowseLookup,
 		columnOptions,
 		infiniteScroll,
 	} = props;
@@ -677,7 +736,8 @@ export const Grid = React.memo((props: GridProps) => {
 	const [clipboardError, setClipboardError] = React.useState('');
 	const [groupColumn, setGroupColumn] = useGridState<string | undefined>(props.stateCache, 'groupColumn', () => undefined);
 	const [aggregateColumns, setAggregateColumns] = useGridState<Record<string, AggregateMode>>(props.stateCache, 'aggregates', () => ({}));
-	const [collapsedGroups, setCollapsedGroups] = useGridState<Set<string>>(props.stateCache, 'collapsedGroups', () => new Set());
+	const [groupCollapse, setGroupCollapse] = useGridState<Record<string, boolean>>(props.stateCache, 'groupCollapse', () => ({}));
+	const [dateGrouping, setDateGrouping] = useGridState<DateGroupingInterval>(props.stateCache, 'dateGrouping', () => 'day');
 	const analysisRequested = !!groupColumn || Object.keys(aggregateColumns).length > 0;
 	const analysisReady = !hasNextPage && !itemsLoading && !isComponentLoading && !props.dataError && !props.commandError;
 	const [analysisPaused, setAnalysisPaused] = React.useState(false);
@@ -690,7 +750,11 @@ export const Grid = React.memo((props: GridProps) => {
 	// Keep column widths stable across paging/filtering; resize explicitly.
 	const containerRef = React.useRef<HTMLDivElement>(null);
 	const listColumnMenuRef = React.useRef<HTMLDivElement>(null);
-	const [columnWidths, setColumnWidths] = useGridState(props.stateCache, 'widths', () => ({} as Record<string, number>));
+	const [columnWidths, setColumnWidths] = useGridState(props.stateCache, 'widths', () => initialLayout?.widths ?? ({} as Record<string, number>));
+	const [layoutMessage, setLayoutMessage] = React.useState('');
+	React.useEffect(() => {
+		setLayoutMessage(writeColumnLayout(props.layoutKey, {order: columnOrder, widths: columnWidths}) ? '' : 'Column layout will last for this session. Browser storage is unavailable.');
+	}, [props.layoutKey, columnOrder, columnWidths]);
 	const [availableColumnWidth, setAvailableColumnWidth] = React.useState(0);
 	const listMode = features.reflow === 'list' || features.reflow === 'auto' && availableColumnWidth > 0 && availableColumnWidth < 480;
 	const detailsListRef = React.useRef<IDetailsList>(null);
@@ -783,6 +847,8 @@ export const Grid = React.memo((props: GridProps) => {
 	const cellMouseDownRef = React.useRef(false);
 	const gridColumnsRef = React.useRef<IColumn[]>([]);
 	const displayItemsRef = React.useRef<DataSet[]>([]);
+	const visibleRangeRowsRef = React.useRef<Set<number>>();
+	const [keyboardTarget, setKeyboardTarget] = React.useState<{head: CellCoord; anchor: CellCoord; query: string} | undefined>();
 	const previousRangeOrderRef = React.useRef<{ rows: string[]; columns: string[] }>();
 	React.useEffect(() => {
 		if (features.enableRangeSelection !== false) return;
@@ -1082,11 +1148,20 @@ export const Grid = React.memo((props: GridProps) => {
 		return Object.values(records).filter((record): record is DataSet => record !== undefined);
 	}, [records, sortedRecordIds]);
 
-	const grouped = React.useMemo(() => groupColumn && analysisReady && columns.some(column => column.name === groupColumn)
-		? groupRecords(items, item => groupingKey(toRawFilterString(item.getValue(groupColumn))), item => item.getFormattedValue(groupColumn))
-		: undefined, [items, groupColumn, analysisReady, columns]);
+	const grouped = React.useMemo(() => {
+		const column = columns.find(column => column.name === groupColumn);
+		if (!groupColumn || !analysisReady || !column) return undefined;
+		if (getFilterKind(column.dataType) === 'date') {
+			const dates = new Map(items.map(item => [item, dateGroup(item.getValue(groupColumn), dateGrouping, {dateOnly: column.dataType.toLowerCase().includes('dateonly'), firstDayOfWeek: features.firstDayOfWeek, locale: features.locale, offsetMinutes: features.dateTimeOffsetMinutes})]));
+			const groupFor = (item: DataSet) => dates.get(item)!;
+			return groupRecords(items, item => groupFor(item).key, item => groupFor(item).label, item => groupFor(item).sortKey);
+		}
+		return groupRecords(items, item => groupingKey(toRawFilterString(item.getValue(groupColumn))), item => item.getFormattedValue(groupColumn));
+	}, [items, groupColumn, analysisReady, columns, dateGrouping, features.firstDayOfWeek, features.locale, features.dateTimeOffsetMinutes]);
 	const orderedItems = grouped?.items ?? items;
-	const groups: IGroup[] | undefined = React.useMemo(() => grouped?.groups.map(group => ({...group, isCollapsed: collapsedGroups.has(group.key)})), [grouped, collapsedGroups]);
+	const groups: IGroup[] | undefined = React.useMemo(() => grouped?.groups.map(group => ({...group, isCollapsed: groupCollapse[group.key] ?? true})), [grouped, groupCollapse]);
+	const visibleRangeRows = React.useMemo(() => groups ? groups.filter(group => !group.isCollapsed).flatMap(group => Array.from({length: group.count}, (_, index) => group.startIndex + index)) : undefined, [groups]);
+	visibleRangeRowsRef.current = visibleRangeRows ? new Set(visibleRangeRows) : undefined;
 	React.useEffect(() => {
 		const next = { rows: orderedItems.map((item) => item.getRecordId()), columns: reconcileColumnOrder(columns.map((column) => column.name), columnOrder) };
 		const previous = previousRangeOrderRef.current;
@@ -1095,6 +1170,7 @@ export const Grid = React.memo((props: GridProps) => {
 		const sameColumns = previous.columns.length === next.columns.length && previous.columns.every((name, index) => name === next.columns[index]);
 		const existingRowsUnmoved = previous.rows.length <= next.rows.length && previous.rows.every((id, index) => id === next.rows[index]);
 		if (!sameColumns || !existingRowsUnmoved) {
+			setKeyboardTarget(undefined);
 			cellSelectionRef.current = null;
 			isDraggingRef.current = false;
 			setCellSelection(null);
@@ -1104,7 +1180,7 @@ export const Grid = React.memo((props: GridProps) => {
 	// cellSelection is included so the List component (which only re-renders pages when `items`
 	// changes reference) picks up the updated onRenderItemColumn selection styles on every click/drag.
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	const displayItems = React.useMemo(() => [...orderedItems], [orderedItems, editingCells, cellSaveStatuses, cellSelection, expandedRows, visitedChildRows, props.renderRowActions, props.renderChildRows, props.hasChildRows, enableInlineEdit]);
+	const displayItems = React.useMemo(() => [...orderedItems], [orderedItems, editingCells, cellSaveStatuses, cellSelection, expandedRows, visitedChildRows, props.renderRowActions, props.renderChildRows, props.hasChildRows, enableInlineEdit, enableLookupLinks, features, columnOptions, lookupTargetEntityMap, onBrowseLookup]);
 	displayItemsRef.current = displayItems;
 	const infiniteLoadIdentity = React.useMemo(() => {
 		const ids = displayItems.map((item) => item.getRecordId()).join("|");
@@ -1210,6 +1286,30 @@ export const Grid = React.memo((props: GridProps) => {
 			handleLoadError();
 		}
 	}, [hasNextPage, infiniteLoadIdentity, infiniteScroll, infiniteScrollError, isComponentLoading, itemsLoading, loadNextPage]);
+	React.useEffect(() => {
+		if (!keyboardTarget) return;
+		if (keyboardTarget.query !== selectionQuery || features.enableRangeSelection === false || infiniteScrollError) {setKeyboardTarget(undefined); return;}
+		if (keyboardTarget.head.row >= orderedItems.length) {
+			if (hasNextPage && !groups) requestNextPage(); else setKeyboardTarget(undefined);
+			return;
+		}
+		const next = {anchor: keyboardTarget.anchor, head: keyboardTarget.head};
+		cellSelectionRef.current = next; setCellSelection(next);
+		let frame: number | undefined;
+		let attempts = 0;
+		const focus = () => {
+			const root = containerRef.current;
+			const candidates = root?.querySelectorAll<HTMLElement>(`[data-cm-cell-row="${next.head.row}"][data-cm-cell-col="${next.head.col}"]`);
+			const cell = candidates && Array.from(candidates).find(cell => cell.closest('.cm-model-driven-grid') === root);
+			if (cell) {cell.focus({preventScroll: true}); cell.scrollIntoView?.({block: 'nearest', inline: 'nearest'}); setKeyboardTarget(undefined);}
+			else if (++attempts <= 30) {
+				if (attempts === 1) detailsListRef.current?.focusIndex(next.head.row);
+				frame = window.requestAnimationFrame(focus);
+			}
+		};
+		focus();
+		return () => {if (frame !== undefined) window.cancelAnimationFrame(frame);};
+	}, [keyboardTarget, selectionQuery, features.enableRangeSelection, orderedItems, hasNextPage, groups, requestNextPage, infiniteScrollError]);
 	// Exact summaries need the whole filtered level. Page through the bound dataset,
 	// retaining its form relationship and security scope; never aggregate a base view alone.
 	React.useEffect(() => {
@@ -1276,7 +1376,7 @@ export const Grid = React.memo((props: GridProps) => {
 				const minCol = Math.min(anchor.col, head.col);
 				const maxCol = Math.max(anchor.col, head.col);
 				const cols = gridColumnsRef.current.slice(minCol, maxCol + 1);
-				const rows = displayItemsRef.current.slice(minRow, maxRow + 1);
+				const rows = displayItemsRef.current.slice(minRow, maxRow + 1).filter((_, index) => !visibleRangeRowsRef.current || visibleRangeRowsRef.current.has(minRow + index));
 				const tsv = serializeGridClipboard(rows
 					.map((row) =>
 						cols
@@ -1816,6 +1916,7 @@ export const Grid = React.memo((props: GridProps) => {
 
 			const handleCellMouseDown = (e: React.MouseEvent) => {
 				if (e.button !== 0 || features.enableRangeSelection === false) return;
+				setKeyboardTarget(undefined);
 				cellMouseDownRef.current = true;
 				if (isEditingThisCell) return;
 				if (e.shiftKey && cellSelectionRef.current) {
@@ -1840,14 +1941,27 @@ export const Grid = React.memo((props: GridProps) => {
 			};
 
 			const handleCellKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-				if (!canEditThisCell || isEditingThisCell) return;
+				if (isEditingThisCell) return;
 				const target = e.target as HTMLElement;
 				const targetTag = target.tagName.toLowerCase();
-				if (targetTag === "a" || targetTag === "button" || targetTag === "input" || targetTag === "select" || targetTag === "textarea") {
+				if (targetTag === "a" || targetTag === "button" || targetTag === "input" || targetTag === "select" || targetTag === "textarea" || target.isContentEditable) {
 					return;
 				}
-				if (e.key === "Enter" || e.key === "F2") {
+				if (features.enableRangeSelection !== false && !e.altKey) {
+					const current = {row: rowIndex, col: colIndex};
+					const edge = e.ctrlKey || e.metaKey;
+					const head = navigateCell(current, e.key, {rows: displayItemsRef.current.length + (!edge && hasNextPage && !groups ? 1 : 0), columns: gridColumns.length, visibleRows: visibleRangeRows, rtl: features.isRTL, edge,
+						pageSize: Math.max(1, Math.floor((containerRef.current?.clientHeight ?? 430) / 43) - 1)});
+					if (head) {
+						e.preventDefault(); e.stopPropagation();
+						setKeyboardTarget({head, anchor: e.shiftKey ? cellSelectionRef.current?.anchor ?? current : head, query: selectionQuery});
+						return;
+					}
+					if (e.key === 'Escape') {e.preventDefault(); e.stopPropagation(); setKeyboardTarget(undefined); cellSelectionRef.current = null; setCellSelection(null); return;}
+				}
+				if (canEditThisCell && (e.key === "Enter" || e.key === "F2" || e.key === ' ')) {
 					e.preventDefault();
+					e.stopPropagation(); setKeyboardTarget(undefined);
 					beginEditCell(item, column, effectiveDataType, formattedValue);
 				}
 			};
@@ -1879,6 +1993,7 @@ export const Grid = React.memo((props: GridProps) => {
 							initialDisplayValue={cellData.value}
 							ariaLabel={`Edit ${column.name}`}
 							onSearch={(term) => onSearchLookup(entityType, term, cellData.columnName, cellData.recordId)}
+							onBrowse={onBrowseLookup ? term => onBrowseLookup(entityType, term, cellData.columnName, cellData.recordId) : undefined}
 							onCommit={(id) => void commitLookupCell(cellKey, id, entityType)}
 							onCancel={() => cancelEditCell(cellKey)}
 						/>
@@ -1953,13 +2068,15 @@ export const Grid = React.memo((props: GridProps) => {
 				);
 
 			// ── Lookup link (read-only or editable) ───────────────────────────
-			const lookupReference = enableLookupLinks ? getLookupReference(item, column.fieldName) : null;
+			const navigationAllowed = allowLookupNavigation(enableLookupLinks, features.navigationTypes, columnMetadata?.isPrimary);
+			const lookupReference = navigationAllowed ? getLookupReference(item, column.fieldName) : null;
 
 			let innerContent: React.ReactNode;
 
 			if (!isEditingThisCell && lookupReference && formattedValue) {
 				const linkContent = (
 					<Link
+						href="#"
 								onClick={(event) => {
 							event.preventDefault();
 							event.stopPropagation();
@@ -1974,6 +2091,8 @@ export const Grid = React.memo((props: GridProps) => {
 				} else {
 					innerContent = withStatus(linkContent);
 				}
+			} else if (navigationAllowed && columnMetadata?.isPrimary && formattedValue) {
+				innerContent = withStatus(<Link href="#" onClick={event => {event.preventDefault(); event.stopPropagation(); onNavigate(item);}}>{formattedValue}</Link>);
 			} else if (canEditThisCell) {
 				// ── Editable plain cell ───────────────────────────────────────
 				innerContent = withStatus(formattedValue);
@@ -2004,7 +2123,9 @@ export const Grid = React.memo((props: GridProps) => {
 							position: 'relative',
 							zIndex: 2,
 						}}
-						tabIndex={canEditThisCell ? 0 : undefined}
+						tabIndex={canEditThisCell || features.enableRangeSelection !== false ? 0 : undefined}
+						data-cm-cell-row={rowIndex}
+						data-cm-cell-col={colIndex}
 						aria-label={`${column.name}: ${formattedValue || "(blank)"}`}
 						onMouseDown={handleCellMouseDown}
 						onMouseEnter={handleCellMouseEnter}
@@ -2026,6 +2147,12 @@ export const Grid = React.memo((props: GridProps) => {
 			cellSelection,
 			columnOptions,
 			features.enableRangeSelection,
+			features.navigationTypes,
+			features.isRTL,
+			groups,
+			hasNextPage,
+			selectionQuery,
+			visibleRangeRows,
 			features.showChoiceColors,
 			features.showStatusIcons,
 			enableInlineEdit,
@@ -2038,7 +2165,9 @@ export const Grid = React.memo((props: GridProps) => {
 			itemsLoading,
 			lookupTargetEntityMap,
 			onOpenLookup,
+			onNavigate,
 			onSearchLookup,
+			onBrowseLookup,
 			onUpdateLookupCell,
 			theme.palette.green,
 			theme.palette.redDark,
@@ -2089,7 +2218,7 @@ export const Grid = React.memo((props: GridProps) => {
 						{!props.disableSelection && <input type="checkbox" aria-label={`Select ${firstValue}`} checked={selectionIds.current.includes(id)} onChange={event => selection.setKeySelected(id, event.target.checked, false)} />}
 						{props.renderChildRows && renderChildToggle(record)}
 						{features.showAvatar && <span className="cm-grid-avatar" aria-hidden="true">{firstValue.split(/\s+/).slice(0,2).map(word => word[0]).join('').toLocaleUpperCase()}</span>}
-						<button type="button" className="cm-grid-record-link" onClick={() => onNavigate(record)}>{firstValue}</button>
+						{enableLookupLinks && features.navigationTypes !== 'none' ? <button type="button" className="cm-grid-record-link" onClick={() => onNavigate(record)}>{firstValue}</button> : <span>{firstValue}</span>}
 					</div>
 					{cardColumns.map(column => <div role="gridcell" className="cm-grid-list-field" key={column.key}>
 						{features.showListColumnNames !== false && <span className="cm-grid-list-field-label">{column.name}</span>}
@@ -2118,9 +2247,13 @@ export const Grid = React.memo((props: GridProps) => {
 		})}</div>;
 	}
 
+	const jumpColumn = columns.find(column => column.name === sorting[0]?.name) ?? columns.find(column => column.isPrimary) ?? columns[0];
+	const jumpFilter = getJumpFilter(filtering);
+	const canJump = !!jumpColumn && getFilterKind(jumpColumn.dataType) === 'text' && !jumpColumn.isHidden && features.enableFiltering !== false;
 	return (
 		<div
 			ref={containerRef}
+			dir={features.isRTL ? 'rtl' : undefined}
 			className={`cm-model-driven-grid${hierarchySelectionGutter ? ' cm-grid-hierarchy' : ''}${listMode ? ' cm-grid-list-mode' : ''}`}
 			style={{ ...rootContainerStyle, display: "flex", flexDirection: "column", minWidth: 0 }}
 		>
@@ -2130,6 +2263,8 @@ export const Grid = React.memo((props: GridProps) => {
 				<div ref={listColumnMenuRef}><ActionButton text="Columns" menuProps={{items: gridColumns.map(column => ({key:column.key, text:column.name, onClick: () => {if (listColumnMenuRef.current) openFilterCallout(column, listColumnMenuRef.current);}}))}} /></div>
 			</div>}
 			{clipboardError && <div role="alert" className="cm-grid-load-error">{clipboardError}</div>}
+			{actionError && !filterTarget && <div role="alert" className="cm-grid-load-error">{actionError}</div>}
+			{layoutMessage && <div role="status" className="cm-grid-analysis-status">{layoutMessage}</div>}
 			{analysisRequested && <div className="cm-grid-analysis-status">
 				{groupColumn && <span>Grouped by {columns.find(column => column.name === groupColumn)?.displayName}</span>}
 				{!analysisReady && <span role="status">{analysisPaused ? 'Summary loading paused.' : `Preparing complete results (${items.length.toLocaleString()} records loaded)…`}</span>}
@@ -2164,8 +2299,8 @@ export const Grid = React.memo((props: GridProps) => {
 						groups={groups}
 						groupProps={{
 							isAllGroupsCollapsed: !!groups?.length && groups.every(group => group.isCollapsed),
-							onToggleCollapseAll: collapsed => setCollapsedGroups(new Set(collapsed ? groups?.map(group => group.key) : [])),
-							onRenderHeader: header => header ? <><GroupHeader {...header} onToggleCollapse={group => {if (group) setCollapsedGroups(current => {const next = new Set(current); if (next.has(group.key)) next.delete(group.key); else next.add(group.key); return next;});}} />{header.group && Object.keys(aggregateColumns).length > 0 && renderTotals(displayItems.slice(header.group.startIndex, header.group.startIndex + header.group.count), 'Group totals')}</> : null
+							onToggleCollapseAll: collapsed => setGroupCollapse(Object.fromEntries((groups ?? []).map(group => [group.key, !!collapsed]))),
+							onRenderHeader: header => header ? <><GroupHeader {...header} onToggleCollapse={group => {if (group) setGroupCollapse(current => ({...current, [group.key]: !group.isCollapsed}));}} />{header.group && Object.keys(aggregateColumns).length > 0 && renderTotals(displayItems.slice(header.group.startIndex, header.group.startIndex + header.group.count), 'Group totals')}</> : null
 						}}
 						columnReorderOptions={features.enableColumnMoving === false ? undefined : {onColumnDrop: ({draggedIndex, targetIndex}) => setColumnOrder(moveColumn(gridColumns.map(column => column.key), draggedIndex, targetIndex))}}
 						onColumnResize={(column, newWidth) => {
@@ -2196,7 +2331,7 @@ export const Grid = React.memo((props: GridProps) => {
 						constrainMode={ConstrainMode.unconstrained}
 						useReducedRowRenderer={false}
 						selection={selection}
-						onItemInvoked={enableInlineEdit ? undefined : onNavigate}
+						onItemInvoked={enableInlineEdit || !enableLookupLinks || features.navigationTypes === 'none' ? undefined : onNavigate}
 						onRenderRow={onRenderRow}></DetailsList>
 					{infiniteScroll && <div ref={sentinelRef} style={{ height: 1 }} />}
 					{filterTarget && filterColumn && (
@@ -2223,6 +2358,8 @@ export const Grid = React.memo((props: GridProps) => {
 									{key: 'left', text: 'Move left', disabled: features.enableColumnMoving === false || gridColumns[0]?.key === filterColumn.key, onClick: () => {const index = gridColumns.findIndex(column => column.key === filterColumn.key); setColumnOrder(moveColumn(gridColumns.map(column => column.key), index, index - 1)); onFilterDismiss();}},
 									{key: 'right', text: 'Move right', disabled: features.enableColumnMoving === false || gridColumns[gridColumns.length - 1]?.key === filterColumn.key, onClick: () => {const index = gridColumns.findIndex(column => column.key === filterColumn.key); setColumnOrder(moveColumn(gridColumns.map(column => column.key), index, index + 1)); onFilterDismiss();}},
 									{key: 'group', text: groupColumn === filterColumn.key ? 'Ungroup' : 'Group by this column', disabled: features.enableGrouping === false || !infiniteScroll, onClick: () => {setGroupColumn(groupColumn === filterColumn.key ? undefined : filterColumn.key); setAnalysisPaused(false); onFilterDismiss();}},
+									...(getFilterKind((filterColumn.data as ComponentFramework.PropertyHelper.DataSetApi.Column).dataType) === 'date' ? [{key: 'date-group', text: 'Group dates by', disabled: features.enableGrouping === false || !infiniteScroll, subMenuProps: {items: dateGroupingIntervals.map(interval => ({key: interval, text: interval[0].toUpperCase() + interval.slice(1), canCheck: true, checked: groupColumn === filterColumn.key && dateGrouping === interval, onClick: () => {setDateGrouping(interval); setGroupColumn(filterColumn.key); setAnalysisPaused(false); onFilterDismiss();}}))}}] : []),
+									{key: 'reset-layout', text: 'Reset column layout', onClick: () => {setColumnOrder([]); setColumnWidths({}); onFilterDismiss();}},
 									{key: 'total', text: 'Totals', disabled: features.enableAggregation === false || !infiniteScroll || getFilterKind((filterColumn.data as ComponentFramework.PropertyHelper.DataSetApi.Column).dataType) !== 'number', subMenuProps: {items: [...(['sum','average','minimum','maximum'] as const).map(mode => ({key: mode, text: mode[0].toUpperCase() + mode.slice(1), canCheck: true, checked: aggregateColumns[filterColumn.key] === mode, onClick: () => {setAggregateColumns(current => ({...current, [filterColumn.key]: mode})); setAnalysisPaused(false); onFilterDismiss();}})), {key: 'none', text: 'None', onClick: () => {setAggregateColumns(current => {const next = {...current}; delete next[filterColumn.key]; return next;}); onFilterDismiss();}}]}},
 								]}} />
 								{actionError && <div role="alert" className="cm-filter-error">{actionError}</div>}
@@ -2233,7 +2370,8 @@ export const Grid = React.memo((props: GridProps) => {
 									return <ActionButton key={direction} styles={menuRowStyles} text={label} iconProps={{ iconName: direction === "asc" ? "SortUp" : "SortDown" }}
 										aria-pressed={filterColumn.isSorted && filterColumn.isSortedDescending === (direction === "desc")}
 										disabled={features.enableSorting === false || (filterColumn.data as ComponentFramework.PropertyHelper.DataSetApi.Column).disableSorting}
-										onClick={() => { setIsLoading(true); try { onSort(filterColumn.key, direction); onFilterDismiss(); } catch (error) { setIsLoading(false); setActionError(error instanceof Error ? error.message : "Unable to sort records."); } }} />;
+										title="Hold Shift while choosing a direction to sort by another column too."
+										onClick={(event) => { setIsLoading(true); try { onSort(filterColumn.key, direction, event.shiftKey); onFilterDismiss(); } catch (error) { setIsLoading(false); setActionError(error instanceof Error ? error.message : "Unable to sort records."); } }} />;
 								})}
 								<ActionButton styles={menuRowStyles} text="Clear sort" iconProps={{ iconName: "Clear" }} disabled={features.enableSorting === false || (filterColumn.data as ComponentFramework.PropertyHelper.DataSetApi.Column).disableSorting === true || !filterColumn.isSorted}
 									onClick={() => { setIsLoading(true); try { onSort(filterColumn.key, "none"); onFilterDismiss(); } catch (error) { setIsLoading(false); setActionError(error instanceof Error ? error.message : "Unable to sort records."); } }} />
@@ -2354,6 +2492,13 @@ export const Grid = React.memo((props: GridProps) => {
 					</Stack>
 				</Stack.Item>
 			)}
+			{features.enableJumpBar && <nav className="cm-grid-jump-bar" aria-label={`Jump by ${jumpColumn?.displayName ?? 'name'}`}>
+				{['All', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'].map(letter => <button key={letter} type="button"
+					aria-pressed={letter === 'All' ? !jumpFilter : jumpFilter?.column === jumpColumn?.name && jumpFilter.letter === letter}
+					disabled={itemsLoading || isComponentLoading || (letter === 'All' ? !jumpFilter : !canJump)}
+					title={letter === 'All' ? 'Remove only the alphabet filter' : canJump ? `${jumpColumn?.displayName} begins with ${letter}` : 'Sort by a text column to use the alphabet bar'}
+					onClick={() => {setIsLoading(true); try {onFilter(jumpColumn?.name ?? '', 'jump', letter === 'All' ? '' : letter);} catch (error) {setIsLoading(false); setActionError(error instanceof Error ? error.message : 'Unable to filter records.');}}}>{letter}</button>)}
+			</nav>}
 			<Stack.Item className="cm-grid-footer">
 				<Stack horizontal verticalAlign="center" style={{ width: "100%" }}>
 					<Stack.Item align="center">
@@ -2383,8 +2528,6 @@ export const Grid = React.memo((props: GridProps) => {
 								</Stack>
 							) : (itemsLoading || isComponentLoading || pagingInProgress) && hasNextPage ? (
 								<Spinner size={SpinnerSize.small} label="Loading..." labelPosition="right" />
-							) : hasNextPage && typeof IntersectionObserver === "undefined" ? (
-								<DefaultButton text="Load more" onClick={onNextPage} disabled={itemsLoading || isComponentLoading} />
 							) : null}
 						</Stack.Item>
 					) : (

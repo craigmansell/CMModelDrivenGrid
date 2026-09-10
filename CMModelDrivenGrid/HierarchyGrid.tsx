@@ -109,7 +109,7 @@ function HierarchyLevel(props: HierarchyGridProps): React.ReactElement {
         return () => {cancelled = true;};
     }, [checker,revision,idsKey,props.hierarchyVisible]);
     return <>{availabilityError && <div role="alert">{availabilityError} Use Refresh on the subgrid command bar to retry.</div>}
-    <Grid {...props} stateCache={stateCache} selectedRecordIds={selection.activeScope === scope ? selection.selectedIds : undefined}
+    <Grid {...props} layoutKey={props.layoutKey ? `${props.layoutKey}:${ancestors.length ? 'children' : 'root'}` : undefined} stateCache={stateCache} selectedRecordIds={selection.activeScope === scope ? selection.selectedIds : undefined}
         onCollapseChild={id => selection.clearBranch(selectionScope([...ancestors,id]))}
         hasChildRows={checker ? record => availability[availabilityId(record.getRecordId())] : undefined} selectionActive={selection.activeScope === scope}
         selectionCountOverride={ancestors.length ? undefined : props.selectionCountOverride ?? selection.selectedCount}
@@ -227,7 +227,11 @@ function ChildPanel({parentId, root, ancestors, visible}: {parentId:string; root
             sorting={sorting} filtering={filtering!} infiniteScroll={true} disableSelection={root.disableSelection}
             enableInlineEdit={!readOnly}
             renderRowActions={undefined} onSelectAllRecords={selectAllChildren}
-            onSort={(name,direction) => setSorting(direction === 'none' ? [] : [{name,sortDirection:direction === 'desc' ? 1 : 0}])}
+            onSort={(name,direction,additive) => setSorting(current => {
+                const next = direction === 'none' || additive ? current.filter(sort => sort.name !== name) : [];
+                if (direction !== 'none') next.splice(additive && current.some(sort => sort.name === name) ? current.findIndex(sort => sort.name === name) : next.length, 0, {name,sortDirection:direction === 'desc' ? 1 : 0});
+                return next;
+            })}
             onFilter={(name,mode,value) => setFiltering(current => updateColumnFilter(current,name,mode,value))}
             onClearAllFilters={() => {setFiltering(undefined); refresh();}}
             loadNextPage={() => request(page + 1,false,serial.current)} loadFirstPage={refresh} loadPreviousPage={refresh}
