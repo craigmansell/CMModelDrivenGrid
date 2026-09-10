@@ -1,4 +1,9 @@
-# DrivenGrid pre-sandbox recheck — HOLD
+# DrivenGrid 1.0.112 pre-sandbox recheck — historical HOLD
+
+**Resolved locally in 1.0.113 / solution 1.0.92.0.** The three findings below now
+have passing regression coverage in the normal suite. See [fix validation](VALIDATION-FIXES-2026-09-10.md)
+for the new package and results. No deployment has occurred. This document retains
+the original failing review evidence; its source line numbers refer to 1.0.112.
 
 10 September 2026. Reviewed product source at commit
 `1db17b158c5feeb02f2520910ae2892d04d9a97a`: control **1.0.112**, unmanaged
@@ -134,10 +139,10 @@ same availability, target, business rules or save lifecycle.
 npx tsx scripts/local-grid-regression-test.tsx --pre-sandbox-review
 ```
 
-The three probes in `scripts/local-pre-sandbox-review-probes.tsx` report all their
-results and return exit code 1 while any release gate fails. They use local mock
-host calls only. The normal regression command remains separate so its prior pass
-status can be compared honestly; do not use that pass to override these failures.
+At the reviewed commit, the three probes in `scripts/local-pre-sandbox-review-probes.tsx`
+were opt-in, used only local mock host calls and returned exit code 1 for the
+reported failures. In 1.0.113 the focused command remains available, but all 16
+expanded regression groups also run through `npm run test:local` and pass.
 
 ## Still required after fixes
 

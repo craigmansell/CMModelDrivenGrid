@@ -210,6 +210,8 @@ export interface GridProps {
 	selectionResetVersion?: number;
 	commandStatus?: string;
 	commandError?: string;
+	/** An error-only host update can finish a query without changing its records. */
+	queryErrorVersion?: number;
 	onSearchLookup?: (
 		entityType: string,
 		searchTerm: string,
@@ -757,6 +759,14 @@ export const Grid = React.memo((props: GridProps) => {
 	}, [props.layoutKey, columnOrder, columnWidths]);
 	const [availableColumnWidth, setAvailableColumnWidth] = React.useState(0);
 	const listMode = features.reflow === 'list' || features.reflow === 'auto' && availableColumnWidth > 0 && availableColumnWidth < 480;
+	const visibleColumns = React.useMemo(() => {
+		const available = columns.filter(column => !column.isHidden && (typeof column.order !== 'number' || column.order >= 0))
+			.sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
+		const order = reconcileColumnOrder(available.map(column => column.name), columnOrder);
+		return available.sort((a,b) => order.indexOf(a.name) - order.indexOf(b.name));
+	}, [columns, columnOrder]);
+	const renderedColumnCount = listMode ? Math.min(visibleColumns.length, Math.max(1, Math.min(10, features.listColumns ?? 3))) : visibleColumns.length;
+	const rangeLayoutKey = JSON.stringify([listMode, visibleColumns.slice(0, renderedColumnCount).map(column => column.name)]);
 	const detailsListRef = React.useRef<IDetailsList>(null);
 	React.useEffect(() => {
 		let frame: number | undefined;
@@ -845,11 +855,11 @@ export const Grid = React.memo((props: GridProps) => {
 	const cellSelectionRef = React.useRef<CellSelection | null>(null);
 	const isDraggingRef = React.useRef(false);
 	const cellMouseDownRef = React.useRef(false);
-	const gridColumnsRef = React.useRef<IColumn[]>([]);
+	const rangeColumnsRef = React.useRef<IColumn[]>([]);
 	const displayItemsRef = React.useRef<DataSet[]>([]);
 	const visibleRangeRowsRef = React.useRef<Set<number>>();
-	const [keyboardTarget, setKeyboardTarget] = React.useState<{head: CellCoord; anchor: CellCoord; query: string} | undefined>();
-	const previousRangeOrderRef = React.useRef<{ rows: string[]; columns: string[] }>();
+	const [keyboardTarget, setKeyboardTarget] = React.useState<{head: CellCoord; anchor: CellCoord; query: string; layout: string} | undefined>();
+	const previousRangeOrderRef = React.useRef<{ rows: string[]; layout: string }>();
 	React.useEffect(() => {
 		if (features.enableRangeSelection !== false) return;
 		cellSelectionRef.current = null;
@@ -1162,12 +1172,12 @@ export const Grid = React.memo((props: GridProps) => {
 	const groups: IGroup[] | undefined = React.useMemo(() => grouped?.groups.map(group => ({...group, isCollapsed: groupCollapse[group.key] ?? true})), [grouped, groupCollapse]);
 	const visibleRangeRows = React.useMemo(() => groups ? groups.filter(group => !group.isCollapsed).flatMap(group => Array.from({length: group.count}, (_, index) => group.startIndex + index)) : undefined, [groups]);
 	visibleRangeRowsRef.current = visibleRangeRows ? new Set(visibleRangeRows) : undefined;
-	React.useEffect(() => {
-		const next = { rows: orderedItems.map((item) => item.getRecordId()), columns: reconcileColumnOrder(columns.map((column) => column.name), columnOrder) };
+	React.useLayoutEffect(() => {
+		const next = { rows: orderedItems.map((item) => item.getRecordId()), layout: rangeLayoutKey };
 		const previous = previousRangeOrderRef.current;
 		previousRangeOrderRef.current = next;
 		if (!previous) return;
-		const sameColumns = previous.columns.length === next.columns.length && previous.columns.every((name, index) => name === next.columns[index]);
+		const sameColumns = previous.layout === next.layout;
 		const existingRowsUnmoved = previous.rows.length <= next.rows.length && previous.rows.every((id, index) => id === next.rows[index]);
 		if (!sameColumns || !existingRowsUnmoved) {
 			setKeyboardTarget(undefined);
@@ -1175,7 +1185,7 @@ export const Grid = React.memo((props: GridProps) => {
 			isDraggingRef.current = false;
 			setCellSelection(null);
 		}
-	}, [orderedItems, columns, columnOrder]);
+	}, [orderedItems, rangeLayoutKey]);
 
 	// cellSelection is included so the List component (which only re-renders pages when `items`
 	// changes reference) picks up the updated onRenderItemColumn selection styles on every click/drag.
@@ -1198,6 +1208,11 @@ export const Grid = React.memo((props: GridProps) => {
 	// This prevents the overlay getting permanently stuck if the filter result is identical
 	// to the current data (records reference unchanged, items useMemo never re-runs).
 	const prevItemsLoadingRef = React.useRef(false);
+	React.useEffect(() => {
+		if (!props.commandError && !props.dataError) return;
+		setIsLoading(false);
+		setPagingInProgress(false);
+	}, [props.commandError, props.dataError, props.queryErrorVersion]);
 	React.useEffect(() => {
 		const wasLoading = prevItemsLoadingRef.current;
 		prevItemsLoadingRef.current = itemsLoading;
@@ -1288,7 +1303,7 @@ export const Grid = React.memo((props: GridProps) => {
 	}, [hasNextPage, infiniteLoadIdentity, infiniteScroll, infiniteScrollError, isComponentLoading, itemsLoading, loadNextPage]);
 	React.useEffect(() => {
 		if (!keyboardTarget) return;
-		if (keyboardTarget.query !== selectionQuery || features.enableRangeSelection === false || infiniteScrollError) {setKeyboardTarget(undefined); return;}
+		if (keyboardTarget.query !== selectionQuery || keyboardTarget.layout !== rangeLayoutKey || features.enableRangeSelection === false || infiniteScrollError) {setKeyboardTarget(undefined); return;}
 		if (keyboardTarget.head.row >= orderedItems.length) {
 			if (hasNextPage && !groups) requestNextPage(); else setKeyboardTarget(undefined);
 			return;
@@ -1306,10 +1321,11 @@ export const Grid = React.memo((props: GridProps) => {
 				if (attempts === 1) detailsListRef.current?.focusIndex(next.head.row);
 				frame = window.requestAnimationFrame(focus);
 			}
+			else {setKeyboardTarget(undefined); cellSelectionRef.current = null; setCellSelection(null);}
 		};
 		focus();
 		return () => {if (frame !== undefined) window.cancelAnimationFrame(frame);};
-	}, [keyboardTarget, selectionQuery, features.enableRangeSelection, orderedItems, hasNextPage, groups, requestNextPage, infiniteScrollError]);
+	}, [keyboardTarget, selectionQuery, rangeLayoutKey, features.enableRangeSelection, orderedItems, hasNextPage, groups, requestNextPage, infiniteScrollError]);
 	// Exact summaries need the whole filtered level. Page through the bound dataset,
 	// retaining its form relationship and security scope; never aggregate a base view alone.
 	React.useEffect(() => {
@@ -1375,7 +1391,7 @@ export const Grid = React.memo((props: GridProps) => {
 				const maxRow = Math.max(anchor.row, head.row);
 				const minCol = Math.min(anchor.col, head.col);
 				const maxCol = Math.max(anchor.col, head.col);
-				const cols = gridColumnsRef.current.slice(minCol, maxCol + 1);
+				const cols = rangeColumnsRef.current.slice(minCol, maxCol + 1);
 				const rows = displayItemsRef.current.slice(minRow, maxRow + 1).filter((_, index) => !visibleRangeRowsRef.current || visibleRangeRowsRef.current.has(minRow + index));
 				const tsv = serializeGridClipboard(rows
 					.map((row) =>
@@ -1754,12 +1770,8 @@ export const Grid = React.memo((props: GridProps) => {
 	}, [loadFirstPage, setIsLoading]);
 
 	const gridColumns = React.useMemo(() => {
-		const visibleCols = columns
-			.filter((col) => !col.isHidden && (typeof col.order !== "number" || col.order >= 0))
-			.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+		const visibleCols = visibleColumns;
 		if (visibleCols.length === 0) return [] as IColumn[];
-		const order = reconcileColumnOrder(visibleCols.map(column => column.name), columnOrder);
-		visibleCols.sort((left, right) => order.indexOf(left.name) - order.indexOf(right.name));
 
 		// Fluent adds cell padding separately. Do not shrink columns below readable
 		// sizes to force a fit: horizontal scrolling keeps headers and cells aligned.
@@ -1802,8 +1814,8 @@ export const Grid = React.memo((props: GridProps) => {
 				onColumnClick,
 			} as IColumn;
 		});
-	}, [columns, columnOrder, sorting, filtering, filterColumn?.key, filterTarget, onColumnContextMenu, onColumnClick, columnWidths, availableColumnWidth, hierarchySelectionGutter, features.showTypeIcons]);
-	gridColumnsRef.current = gridColumns;
+	}, [visibleColumns, sorting, filtering, filterColumn?.key, filterTarget, onColumnContextMenu, onColumnClick, columnWidths, availableColumnWidth, hierarchySelectionGutter, features.showTypeIcons]);
+	rangeColumnsRef.current = gridColumns.slice(0, renderedColumnCount);
 	React.useLayoutEffect(() => {
 		const list = detailsListRef.current;
 		if (!list) return;
@@ -1950,11 +1962,11 @@ export const Grid = React.memo((props: GridProps) => {
 				if (features.enableRangeSelection !== false && !e.altKey) {
 					const current = {row: rowIndex, col: colIndex};
 					const edge = e.ctrlKey || e.metaKey;
-					const head = navigateCell(current, e.key, {rows: displayItemsRef.current.length + (!edge && hasNextPage && !groups ? 1 : 0), columns: gridColumns.length, visibleRows: visibleRangeRows, rtl: features.isRTL, edge,
-						pageSize: Math.max(1, Math.floor((containerRef.current?.clientHeight ?? 430) / 43) - 1)});
+					const head = navigateCell(current, e.key, {rows: displayItemsRef.current.length + (!edge && hasNextPage && !groups ? 1 : 0), columns: renderedColumnCount, visibleRows: visibleRangeRows, rtl: features.isRTL, edge,
+						pageSize: Math.max(1, Math.floor((containerRef.current?.clientHeight ?? 430) / (listMode ? 44 + renderedColumnCount * 36 : 43)) - 1)});
 					if (head) {
 						e.preventDefault(); e.stopPropagation();
-						setKeyboardTarget({head, anchor: e.shiftKey ? cellSelectionRef.current?.anchor ?? current : head, query: selectionQuery});
+						setKeyboardTarget({head, anchor: e.shiftKey ? cellSelectionRef.current?.anchor ?? current : head, query: selectionQuery, layout: rangeLayoutKey});
 						return;
 					}
 					if (e.key === 'Escape') {e.preventDefault(); e.stopPropagation(); setKeyboardTarget(undefined); cellSelectionRef.current = null; setCellSelection(null); return;}
@@ -2152,6 +2164,9 @@ export const Grid = React.memo((props: GridProps) => {
 			groups,
 			hasNextPage,
 			selectionQuery,
+			rangeLayoutKey,
+			renderedColumnCount,
+			listMode,
 			visibleRangeRows,
 			features.showChoiceColors,
 			features.showStatusIcons,
@@ -2210,7 +2225,7 @@ export const Grid = React.memo((props: GridProps) => {
 			}
 			const record = rowProps.item as ComponentFramework.PropertyHelper.DataSetApi.EntityRecord;
 			if (listMode) {
-				const cardColumns = gridColumns.slice(0, Math.max(1, Math.min(10, features.listColumns ?? 3)));
+				const cardColumns = gridColumns.slice(0, renderedColumnCount);
 				const id = record.getRecordId();
 				const firstValue = record.getFormattedValue(cardColumns[0]?.fieldName ?? '') || id;
 				return <React.Fragment><div role="row" aria-selected={selectionIds.current.includes(id)} className={`cm-grid-list-row${features.bandedListRows !== false && rowProps.itemIndex % 2 ? ' is-banded' : ''}`} style={{height: 44 + cardColumns.length * 36}}>
@@ -2317,7 +2332,7 @@ export const Grid = React.memo((props: GridProps) => {
 						}}
 						onShouldVirtualize={() => true}
 						listProps={{renderedWindowsAhead: 1, renderedWindowsBehind: 1,
-							getPageHeight: (start = 0, _rect, count = 10) => displayItems.slice(start, start + count).reduce((height, row) => height + (listMode ? 44 + Math.min(gridColumns.length, Math.max(1,Math.min(10,features.listColumns ?? 3))) * 36 : 43) + (expandedRows.has(row.getRecordId()) ? 380 : 0), 0)}}
+							getPageHeight: (start = 0, _rect, count = 10) => displayItems.slice(start, start + count).reduce((height, row) => height + (listMode ? 44 + renderedColumnCount * 36 : 43) + (expandedRows.has(row.getRecordId()) ? 380 : 0), 0)}}
 						selectionMode={props.disableSelection ? SelectionMode.none : features.enableMultipleSelection === false ? SelectionMode.single : SelectionMode.multiple}
 						checkboxVisibility={hierarchySelectionGutter ? CheckboxVisibility.always : CheckboxVisibility.onHover}
 						onRenderCheckbox={hierarchySelectionGutter ? renderHierarchyCheckbox : undefined}

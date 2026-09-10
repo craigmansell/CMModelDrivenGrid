@@ -39,6 +39,12 @@ interface PageLoadWaitHandle {
 
 const CONTROL_DESTROYED_MESSAGE = "The control was destroyed while loading a dataset page.";
 
+function copyFilter(filter: FilterExpression | undefined): FilterExpression | undefined {
+	return filter ? {...filter, conditions: filter.conditions.map(condition => ({...condition,
+		value: Array.isArray(condition.value) ? [...condition.value] : condition.value})),
+		...(filter.filters ? {filters: filter.filters.map(child => copyFilter(child)!)} : {})} : undefined;
+}
+
 // Register icons - but ignore warnings if they have been already registered by Power Apps
 initializeIcons(undefined, { disableWarnings: true });
 
@@ -89,6 +95,8 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 	private filterViewKey = '';
 	private rootFilterBusy = false;
 	private rootFilterError = '';
+	private queryErrorVersion = 0;
+	private rootFilterRecoveryRequired = false;
 	private pendingRootFilter: {filter: FilterExpression | undefined; sorting: ComponentFramework.PropertyHelper.DataSetApi.SortStatus[]} | undefined;
 	private getRootFilter = (): FilterExpression | undefined => this.ownsRootFilter ? this.logicalRootFilter
 		: this.nativeHierarchy ? this.nativeHierarchy.rootFilter : this.context.parameters.records.filtering.getFilter();
@@ -114,18 +122,39 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		if (this.rootFilterBusy) { this.pendingRootFilter={filter,sorting:nextSorting}; return; }
 		this.rootFilterError='';
 		if (needsServerFilter(filter)) { void this.applyServerRootFilter(filter!,nextSorting); return; }
+		const dataset=this.context.parameters.records;
+		const previousPhysical=copyFilter(dataset.filtering.getFilter());
+		const previousLogical=copyFilter(this.getRootFilter());
+		const previousSorting=dataset.sorting.map(sort => ({...sort}));
+		const native=this.nativeHierarchy;
+		const previousNativeFilter=copyFilter(native?.rootFilter);
+		const previousNativeSorting=native?.rootSorting.map(sort => ({...sort}));
 		try {
 			const physical=supportedFilterSuperset(filter,this.context.parameters.records.columns);
 			this.logicalRootFilter=filter; this.ownsRootFilter=true;
 			if (this.nativeHierarchy) void this.nativeHierarchy.refreshRoots(physical,nextSorting);
 			else {
-				const dataset=this.context.parameters.records;
 				dataset.sorting.splice(0,dataset.sorting.length,...nextSorting);
 				if (physical) dataset.filtering.setFilter(physical); else dataset.filtering.clearFilter();
 				dataset.refresh();
 			}
+			this.rootFilterRecoveryRequired=false;
 		} catch (error) {
+			this.logicalRootFilter=previousLogical; this.ownsRootFilter=true;
 			this.rootFilterError=error instanceof Error ? error.message : 'Unable to apply the filter.';
+			// Sorting can clear the host filter before setFilter/refresh rejects.
+			// Restore the whole query, not just the text shown in the filter chip.
+			try {
+				if (native) {native.rootFilter=previousNativeFilter; native.rootSorting=previousNativeSorting!;}
+				dataset.sorting.splice(0,dataset.sorting.length,...previousSorting);
+				if (previousPhysical) dataset.filtering.setFilter(previousPhysical); else dataset.filtering.clearFilter();
+			} catch {
+				this.rootFilterRecoveryRequired=true;
+				this.rootFilterError+=' Refresh the subgrid before selecting records; the previous query could not be restored.';
+				dataset.setSelectedRecordIds([]); this.nativeSelectionReset++;
+			}
+			// An identical error on a second attempt still needs a completion event.
+			this.queryErrorVersion++;
 			this.renderGrid();
 		}
 	};
@@ -165,6 +194,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 			await this.refreshPhysicalFilter(filterForIds(meta.primaryIdAttr,matches),sorting);
 			assertCurrent();
 			this.logicalRootFilter=filter; this.ownsRootFilter=true;
+			this.rootFilterRecoveryRequired=false;
 		} catch (error) {
 			if (!this.isDestroyed && this.nativeHierarchy === native && this.context.parameters.records.getViewId() === viewId) {
 				this.logicalRootFilter=previousLogical; this.ownsRootFilter=true;
@@ -567,7 +597,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 	};
 
 	setSelectedRecords = (ids: string[]): void => {
-		if (this.rootFilterBusy) { this.context.parameters.records.setSelectedRecordIds([]); return; }
+		if (this.rootFilterBusy || this.rootFilterRecoveryRequired) { this.context.parameters.records.setSelectedRecordIds([]); return; }
 		if (this.isDestroyed) return;
 		this.selectionRevision++;
 		if (this.nativeHierarchy) {
@@ -698,6 +728,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 	};
 
 	private onSelectAllRecords = async (options?: SelectAllRequest): Promise<SelectAllResult | undefined> => {
+		if (this.rootFilterRecoveryRequired) throw new Error('Refresh the subgrid before selecting records.');
 		if (this.rootFilterBusy) throw new Error('Wait for filtering to finish before selecting records.');
 		if (this.nativeHierarchy) {
 			this.selectionRevision++;
@@ -1242,10 +1273,12 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		targetEntityType: string
 	): Promise<void> => {
 		const entityType = this.context.parameters.records.getTargetEntityType();
+		const viewId = this.context.parameters.records.getViewId?.();
 		if (!entityType) throw new Error("Unable to determine target table for inline editing.");
 		try {
 			this.assertEditingAllowed(recordId);
 			const editableColumn = this.getEditableDatasetColumn(columnName);
+			const originalDataType = editableColumn.dataType;
 
 			// Ensure the nav property map is fully populated before building candidates.
 			if (this.lookupNavPropertyFetchPromise) {
@@ -1268,6 +1301,10 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 			let lastError: unknown;
 			for (const bindName of bindCandidates) {
 				this.assertEditingAllowed(recordId);
+				const currentColumn = this.getEditableDatasetColumn(columnName);
+				if (this.context.parameters.records.getTargetEntityType() !== entityType || this.context.parameters.records.getViewId?.() !== viewId || currentColumn.dataType !== originalDataType) {
+					throw new Error('The grid changed. Open the lookup again.');
+				}
 				try {
 					const updateData: ComponentFramework.WebApi.Entity = isClear
 						? { [`${bindName}@odata.bind`]: null }
@@ -1514,6 +1551,8 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 				selectionResetVersion: this.nativeSelectionReset,
 				commandStatus: this.rootFilterBusy ? 'Checking filters across all grid pages…' : this.nativeHierarchyInitializing || native?.busy ? 'Preparing record commands…' : undefined,
 				commandError: this.rootFilterError || this.nativeSelectionError || undefined,
+				queryErrorVersion: this.queryErrorVersion,
+				disableSelection: this.rootFilterRecoveryRequired,
 				childRows: this.context.parameters.EnableChildRows?.raw ? {loadPage:this.loadChildPage,hasChildren:this.checkChildRows,revision:this.childRevision,
 					readOnly:!!this.context.parameters.DisableChildEditing?.raw || this.context.mode.isControlDisabled} : undefined,
 				width: allocatedWidth,
@@ -1606,12 +1645,19 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		const filterViewKey=`${dataset.getTargetEntityType?.() ?? ''}|${dataset.getViewId?.() ?? ''}`;
 		if (this.filterViewKey && this.filterViewKey !== filterViewKey) {
 			this.ownsRootFilter=false; this.logicalRootFilter=undefined; this.pendingRootFilter=undefined; this.rootFilterError='';
+			this.rootFilterRecoveryRequired=false;
 		}
 		this.filterViewKey=filterViewKey;
 		this.initializeNativeHierarchy();
 		const native = this.nativeHierarchy;
 		const completedExternalRefresh=this.childDatasetWasLoading && !dataset.loading && !this.appendingPage && !this.selectAllAcrossPagesInProgress && !this.rootFilterBusy && !native?.busy && (!native || !dataset.paging.hasPreviousPage);
 		if (completedExternalRefresh) {
+			if (!dataset.error) {
+				// After a failed rollback, the accepted host query is authoritative.
+				// Do not re-enable commands with an old logical filter still displayed.
+				if (this.rootFilterRecoveryRequired) {this.ownsRootFilter=false; this.logicalRootFilter=undefined;}
+				this.rootFilterRecoveryRequired=false; this.rootFilterError='';
+			}
 			this.childRevision++;
 			native?.externalRefresh();
 			if (!native) {this.selectionRevision++; this.nativeSelectionReset++; dataset.setSelectedRecordIds([]);}

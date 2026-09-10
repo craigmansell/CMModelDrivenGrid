@@ -1,5 +1,14 @@
 # CMModelDrivenGridSolution changelog
 
+## Unreleased candidate 1.0.92.0 / control 1.0.113 — fix pre-sandbox review gates — 2026-09-10
+
+- Fix synchronous ordinary dataset filter/sort rejection: snapshot and restore nested physical/logical filters and sort priorities; release local loading even when records are unchanged or the same error occurs twice. If restoring the host query also fails, block row selection/Select All until recovery; a successful refresh follows the accepted host filter and a new view does not inherit the old recovery state.
+- Bound compact keyboard navigation and Excel range copying to displayed fields. Clear ranges and pending off-page focus on reflow/column changes; table-mode navigation still uses all visible columns. Keep Excel menus, Shift sort/ranges, quoted TSV, lazy child expansion, shared outer commands and infinite scrolling.
+- Recheck current column editability, presence, alias, type, view and table immediately before lookup writes and permitted property-name retries, including clearing a lookup. Late read-only/changed-view results must not issue another update; existing no-retry rules for ambiguous or permission failures remain.
+- Promote the review probes into the normal regression suite and expand to 16 groups. Final full suite, focused harness/test TypeScript and authoritative Release build with ESLint pass; includes exhaustive 42,000-record hierarchy and 10,000-row/200-batch strict-host paging checks. Browser compact/table keyboard, Excel menu/sort and shared exact-child sample Open checks pass.
+- Verify local unmanaged package 1.0.92.0, control 1.0.113, publisher CraigMansell/cm, one control/one dataset/39 inputs, all 91 resource keys. Bundle 743,630 bytes; three existing Webpack performance warnings remain. Package SHA-256 `948FADDD33A48623DC8AF3764AA9415EFECE60ACBBF79AFAAC8C39A69DBDE69E`; bundle SHA-256 `F30DC138710B6242005B200AA521A97BB39BDC8F0E967E4123CCA13EC7A798C4`.
+- No Dataverse import/publish, form/view/ribbon/schema/record writes or production action. Last recorded sandbox verification is still 1.0.110 / 1.0.89.0, not re-read in this fix batch. A fresh exact rollback, environment/version/component locks and signed-in acceptance remain mandatory before deployment. Evidence: `VALIDATION-FIXES-2026-09-10.md`; historical failing review retained.
+
 ## Pre-sandbox review of candidate 1.0.91.0 / control 1.0.112 — HOLD — 2026-09-10
 
 - Re-ran the complete local suite, type checks, unmanaged Release build, package/resource readback and dependency audit. Existing regressions pass, including all 42,000 fixture records and 10,000-row strict-host paging; shipped-dependency audit is clean, nine development-tool entries remain.

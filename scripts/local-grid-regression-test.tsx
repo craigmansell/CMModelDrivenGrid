@@ -512,6 +512,7 @@ async function run(): Promise<void> {
 	await testInfiniteScrollIdentityGuard();
 	await testClippedChildPaging();
 	await testAncestorScrollRepaintsVirtualRows();
+	await runReviewGates();
 	console.log("Local grid regression tests passed.");
 }
 
@@ -883,10 +884,10 @@ async function testLookupInteractionSafety(): Promise<void> {
 	assert(writes.length===0,'A dialog closing after unmount must not save.');
 }
 
-// Keep review probes explicit: they document currently failing release gates,
-// while the existing regression suite remains independently runnable.
+// The release gates now run in the normal suite; retain the focused entry point.
+const runReviewGates = () => (require('./local-pre-sandbox-review-probes') as typeof import('./local-pre-sandbox-review-probes')).runPreSandboxReviewProbes({container, resources, renderGrid, updateGrid, unmount: () => { ReactDOM.unmountComponentAtNode(container); }});
 const runSelectedSuite = process.argv.includes('--pre-sandbox-review')
-	? () => (require('./local-pre-sandbox-review-probes') as typeof import('./local-pre-sandbox-review-probes')).runPreSandboxReviewProbes({container, resources, renderGrid, unmount: () => { ReactDOM.unmountComponentAtNode(container); }})
+	? runReviewGates
 	: run;
 runSelectedSuite()
 	.then(() => {

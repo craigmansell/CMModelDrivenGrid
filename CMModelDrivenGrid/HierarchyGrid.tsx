@@ -222,7 +222,7 @@ function ChildPanel({parentId, root, ancestors, visible}: {parentId:string; root
         onClick={event => event.stopPropagation()}>
         {error && <div role="alert">{error} Use Refresh on the subgrid command bar to try again.</div>}
         <HierarchyGrid {...root} width={undefined} height={360} ancestors={ancestors} hierarchyVisible={visible} records={records} sortedRecordIds={ids}
-            commandStatus={undefined} commandError={undefined} dataError={error}
+			commandStatus={undefined} commandError={undefined} queryErrorVersion={undefined} dataError={error}
             itemsLoading={loading} hasNextPage={!error && data.hasNextPage} hasPreviousPage={false} currentPage={1} totalResultCount={ids.length}
             sorting={sorting} filtering={filtering!} infiniteScroll={true} disableSelection={root.disableSelection}
             enableInlineEdit={!readOnly}

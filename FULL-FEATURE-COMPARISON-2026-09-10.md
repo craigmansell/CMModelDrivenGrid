@@ -1,10 +1,11 @@
 # DrivenGrid vs Power Apps grid — updated full review
 
-10 September 2026. Candidate **1.0.112 / unmanaged solution 1.0.91.0**.
+10 September 2026. Candidate **1.0.113 / unmanaged solution 1.0.92.0**.
 
-**Pre-sandbox recheck: HOLD.** Three additional failure-path probes fail despite
-the existing suite passing. See [the current release review](REVIEW-PRE-SANDBOX-2026-09-10.md).
-This feature inventory does not supersede that release gate.
+**Pre-sandbox defect gates resolved locally in 1.0.113.** All three defects from
+the [1.0.112 review](REVIEW-PRE-SANDBOX-2026-09-10.md) are fixed. Expanded regressions
+are part of the passing normal suite; see [current fix validation](VALIDATION-FIXES-2026-09-10.md).
+The candidate is not deployed and signed-in acceptance remains required.
 
 ## Outcome
 
@@ -26,6 +27,12 @@ Shift-add sorting, scoped browser column layouts, alphabet filtering, all/primar
 navigation and the supported full lookup dialog. It fixes unchosen lookup acceptance
 on Tab, late/cancelled picker results, portalled click propagation, custom-table
 primary-name metadata and stale visual settings on recycled rows.
+
+Follow-up 1.0.113 restores ordinary filter/sort state after synchronous host rejection
+and releases error-only loading, including repeat failures and recovery. Compact
+navigation/copying is bounded by displayed fields and cancels stale reflow targets.
+Lookup writes revalidate current column flags, type, view and table after metadata
+and before each permitted retry. No Excel feature was removed.
 
 The important remaining gaps are different-table/independent child datasets,
 lookup/status label-pattern filters, richer specialist editors,
@@ -51,7 +58,7 @@ and one records dataset. Property counts are **not a parity percentage**.
   2,198.08 / 230.00 / 2,428.08 independently matched a scoped Dataverse aggregate.
 - **This candidate, local**: component regressions, type/lint checks and actual
   harness UI. Local rows are fixtures, not Dataverse throughput measurements.
-- **This candidate, server queries**: read-only conditions on the 101 existing QA
+- **Earlier 1.0.111 feature-batch server queries**: read-only conditions on the 101 existing QA
   records, with sandbox URL and organization locks. All 30 added date operators
   accepted; percent and underscore matches compared with independently derived IDs.
   This did not install the candidate or exercise each condition through the live UI.
@@ -318,7 +325,16 @@ The full lookup uses Microsoft's public [PCF lookupObjects interface](https://le
 not private OneGrid internals. It does not forward configured custom filter clauses
 to an undocumented option: selected IDs are checked separately before saving.
 
-## Current 1.0.112 validation record
+## Current 1.0.113 validation record
+
+All 16 review regression groups, the complete local suite, focused test/harness
+types and authoritative unmanaged Release build passed. The suite includes all
+42,000 fixture records and 10,000-row strict-host paging. Browser checks cover
+compact/table End boundaries, Excel menu/sorting and exact-child sample command
+targeting. Package/resources/version/hash readback passed. No Dataverse writes;
+details and remaining acceptance boundaries: [fix validation](VALIDATION-FIXES-2026-09-10.md).
+
+## Earlier 1.0.112 validation record (retained evidence)
 
 - Complete local suite passed, including all previous filter, child selection,
   1,000-selection-cap, async paging and 42,000-fixture tests.

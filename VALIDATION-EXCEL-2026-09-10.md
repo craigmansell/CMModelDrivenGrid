@@ -1,10 +1,10 @@
 # DrivenGrid 1.0.112 — Excel-preserving feature pass
 
-**Later pre-sandbox review: HOLD.** The existing suite still passes, but three
-supplementary probes fail (filter rejection/loading recovery, compact keyboard
-navigation and late column read-only enforcement). See
-[the fresh review](REVIEW-PRE-SANDBOX-2026-09-10.md). The evidence below is the earlier
-feature-pass record, not current release approval.
+**Historical feature-pass evidence for 1.0.112.** The subsequent
+[pre-sandbox review](REVIEW-PRE-SANDBOX-2026-09-10.md) reproduced three defects.
+They are now fixed in 1.0.113 and included in the passing normal regression suite:
+[current fix validation](VALIDATION-FIXES-2026-09-10.md). Neither candidate has been
+deployed; the evidence below remains specific to the earlier build.
 
 10 September 2026. Independent DrivenGrid PCF retained; no Microsoft grid replacement.
 Unmanaged candidate solution **1.0.91.0**, control **1.0.112**. This package is **not
