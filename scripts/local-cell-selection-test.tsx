@@ -6,6 +6,7 @@ import * as Utilities from "@fluentui/react/lib/Utilities";
 import * as UtilitiesCommonJs from "@fluentui/react/lib-commonjs/Utilities";
 import { List } from "@fluentui/react/lib/List";
 import { Grid } from "../CMModelDrivenGrid/Grid";
+import { initializeIcons } from "@fluentui/react/lib/Icons";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {
 	url: "http://localhost/",
@@ -13,6 +14,11 @@ const dom = new JSDOM("<!doctype html><html><body></body></html>", {
 
 globalThis.window = dom.window as unknown as Window & typeof globalThis;
 globalThis.document = dom.window.document;
+initializeIcons(undefined, { disableWarnings: true });
+Object.defineProperty(dom.window.HTMLCanvasElement.prototype, "getContext", {
+	value: () => ({ font: "", measureText: (text: string) => ({ width: text.length * 7 }) }),
+	configurable: true,
+});
 Object.defineProperty(globalThis, "navigator", { value: dom.window.navigator, configurable: true });
 (globalThis as unknown as { Document: typeof Document }).Document = dom.window.Document;
 (globalThis as unknown as { Node: typeof Node }).Node = dom.window.Node;
@@ -199,14 +205,13 @@ async function run(): Promise<void> {
 				setSelectedRecords: () => undefined,
 				onNavigate: () => undefined,
 				onOpenLookup: () => undefined,
+				onSelectAllRecords: async () => undefined,
 				onSort: () => undefined,
 				onFilter: () => undefined,
 				loadFirstPage: () => undefined,
 				loadNextPage: () => undefined,
 				loadPreviousPage: () => undefined,
 				onUpdateCell: async () => undefined,
-				onFullScreen: () => undefined,
-				isFullScreen: false,
 			}),
 			container
 		);
@@ -311,6 +316,12 @@ async function run(): Promise<void> {
 	const cells0 = lines[0].split("\t");
 	assert(cells0.length === 2, `Expected 2 tab-separated values in row 0, got ${cells0.length}`);
 	console.log("  PASS: Ctrl+C produced 2×2 TSV");
+	Object.defineProperty(navigator, 'clipboard', {value: {writeText: async () => {throw new Error('Clipboard denied');}}, configurable:true});
+	await act(async()=>{document.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'c',ctrlKey:true,bubbles:true})); await Promise.resolve();});
+	assert(container.querySelector('[role="alert"]')?.textContent?.includes('Unable to copy') === true, 'Denied clipboard access must show a useful error.');
+	Object.defineProperty(navigator, 'clipboard', {value:undefined, configurable:true});
+	await act(async()=>{document.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'c',ctrlKey:true,bubbles:true})); await Promise.resolve();});
+	assert(container.querySelector('[role="alert"]')?.textContent?.includes('unavailable') === true, 'Unavailable clipboard access must not fail silently.');
 
 	console.log("\n✓ All cell-selection tests passed.");
 }

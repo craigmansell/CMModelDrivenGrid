@@ -9,6 +9,7 @@
 
   <PropertyGroup>
     <ProjectGuid>75613b26-4ae4-4bbe-9a3f-71353fa7d7a2</ProjectGuid>
+    <SolutionPackageType>Unmanaged</SolutionPackageType>
     <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
     <!--Remove TargetFramework when this is available in 16.1-->
     <TargetFramework>net462</TargetFramework>

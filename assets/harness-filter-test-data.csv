@@ -1,0 +1,7 @@
+HighlightIndicator,ProjectName,Amount,StartDate,IsActive,Status
+0,Alpha Tower,1250.50,2026-09-01,true,New
+1,Alpine Offices,250.00,2026-09-02,false,In Progress
+2,Beta Warehouse,0.00,2026-09-03,true,Complete
+0,Gamma Retail,9999.99,2026-09-04,false,On Hold
+,Blank Indicator,100.00,2026-09-05,true,New
+1,"North, London",42.50,2026-09-06,false,In Progress

@@ -1,16 +1,383 @@
-.ms-DetailsRow-cell:hover {
-	background-color: rgba(0, 0, 0, 0.05);
+.cm-model-driven-grid {
+	--cm-grid-accent: #0f6cbd;
+	--cm-grid-accent-hover: #115ea3;
+	--cm-grid-border: #edebe9;
+	--cm-grid-border-strong: #d2d0ce;
+	--cm-grid-header: #ffffff;
+	--cm-grid-hover: #f5f5f5;
+	--cm-grid-selected: #deecf9;
+	--cm-grid-text: #323130;
+	--cm-grid-muted: #605e5c;
+	background: #ffffff;
+	color: var(--cm-grid-text);
+	font-family: "Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, sans-serif;
+	height: 100%;
+	min-width: 0;
+	width: 100%;
 }
 
-input::-ms-clear {
+.cm-model-driven-grid *,
+.cm-model-driven-grid *::before,
+.cm-model-driven-grid *::after {
+	box-sizing: border-box;
+}
+
+.cm-model-driven-grid {
+	background: #ffffff;
+	border: 1px solid var(--cm-grid-border);
+	border-radius: 2px;
+	overflow: hidden;
+}
+
+.cm-model-driven-grid .cm-grid-layout,
+.cm-model-driven-grid .cm-grid-surface,
+.cm-model-driven-grid .cm-grid-scroll-pane,
+.cm-model-driven-grid .cm-grid-details {
+	min-height: 0;
+}
+
+.cm-model-driven-grid .ms-DetailsList {
+	color: var(--cm-grid-text);
+	font-size: 14px;
+}
+
+.cm-model-driven-grid .ms-DetailsList-headerWrapper {
+	border-bottom: 1px solid var(--cm-grid-border-strong);
+}
+
+.cm-model-driven-grid .ms-DetailsHeader {
+	background: var(--cm-grid-header);
+	border-bottom: 0;
+	height: 42px;
+	min-width: 100%;
+	padding-top: 0;
+	text-align: left;
+}
+
+.cm-model-driven-grid .ms-DetailsHeader-cell,
+.cm-model-driven-grid .ms-DetailsHeader-check {
+	background: var(--cm-grid-header);
+	color: var(--cm-grid-text);
+	height: 42px;
+}
+
+.cm-model-driven-grid .ms-DetailsHeader-cell {
+	border-right: 0;
+	font-size: 14px;
+	font-weight: 600;
+	padding: 0 12px;
+}
+
+.cm-model-driven-grid .ms-DetailsHeader-cell:hover,
+.cm-model-driven-grid .ms-DetailsHeader-cell:focus-within {
+	background: var(--cm-grid-hover);
+	box-shadow: inset -1px 0 var(--cm-grid-border-strong);
+}
+
+.cm-model-driven-grid .ms-DetailsHeader-cellTitle,
+.cm-model-driven-grid .ms-DetailsHeader-cellName {
+	justify-content: flex-start;
+	text-align: left !important;
+}
+
+.cm-model-driven-grid .ms-DetailsHeader-cellName {
+	display: flex;
+	font-weight: 600;
+	gap: 8px;
+	width: 100%;
+}
+
+.cm-model-driven-grid .ms-DetailsRow {
+	background: #ffffff;
+	border-bottom: 1px solid var(--cm-grid-border);
+	color: var(--cm-grid-text);
+	min-height: 42px;
+}
+
+.cm-model-driven-grid .ms-DetailsRow:hover {
+	background: var(--cm-grid-hover);
+}
+
+.cm-model-driven-grid .ms-DetailsRow.is-selected,
+.cm-model-driven-grid .ms-DetailsRow.is-selected:hover {
+	background: var(--cm-grid-selected);
+}
+
+.cm-model-driven-grid .ms-DetailsRow-cell {
+	align-items: center;
+	color: var(--cm-grid-text);
+	display: flex;
+	font-size: 14px;
+	line-height: 20px;
+	min-height: 42px;
+	padding: 0 12px;
+}
+
+.cm-model-driven-grid .ms-DetailsRow-cell:hover {
+	background: transparent;
+}
+
+.cm-model-driven-grid .ms-DetailsHeader-check,
+.cm-model-driven-grid .ms-DetailsRow-check {
+	width: 40px;
+}
+
+/* Checkbox wrappers must not inherit data-cell padding: it added an extra
+   24px, with a further 1px difference between the header and every row. */
+.cm-model-driven-grid .ms-DetailsHeader-cellIsCheck,
+.cm-model-driven-grid .ms-DetailsRow-cellCheck {
+	padding: 0;
+	width: 40px;
+	min-width: 40px;
+	border: 0;
+}
+
+.cm-model-driven-grid .cm-grid-number-cell {
+	justify-content: flex-end;
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+.cm-model-driven-grid .cm-grid-number-cell > div { width: 100%; }
+.cm-model-driven-grid .cm-grid-number-cell > div[aria-label] { justify-content: flex-end; }
+
+.cm-model-driven-grid .ms-DetailsRow-check:hover,
+.cm-model-driven-grid .ms-DetailsHeader-check:hover {
+	background: var(--cm-grid-hover);
+}
+
+.cm-model-driven-grid a,
+.cm-model-driven-grid .ms-Link {
+	color: var(--cm-grid-accent);
+	text-decoration: none;
+}
+
+.cm-model-driven-grid a:hover,
+.cm-model-driven-grid .ms-Link:hover {
+	color: var(--cm-grid-accent-hover);
+	text-decoration: underline;
+}
+
+.cm-grid-column-callout .ms-Callout-main {
+	/* The callout is fixed-size; only the active view's body may scroll. */
+	height: 100%;
+	min-height: 0;
+	container: cm-column-callout / size;
+	overflow: hidden;
+	border: 1px solid #edebe9;
+	border-radius: 4px;
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+	font-family: "Segoe UI", sans-serif;
+	color: #323130;
+}
+
+.cm-grid-column-callout *, .cm-grid-column-callout *::before, .cm-grid-column-callout *::after { box-sizing: border-box; }
+.cm-column-menu { display: flex; flex-direction: column; height: 100%; min-height: 0; width: 100%; overflow: hidden; padding: 6px 0; background: #fff; }
+.cm-column-menu-body { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }
+.cm-column-menu-body > * { flex-shrink: 0; }
+.cm-column-menu-title { padding: 8px 12px; font-size: 14px; font-weight: 600; }
+.cm-column-menu-separator { margin: 4px 0; border-top: 1px solid #edebe9; }
+.cm-column-menu-values { display: flex; flex: 1; flex-direction: column; min-height: 0; gap: 4px; padding: 8px 12px 0; }
+.cm-column-menu-values > .ms-TextField { flex-shrink: 0; }
+.cm-column-value-list { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; border: 1px solid #d2d0ce; border-radius: 2px; padding: 4px 8px; }
+/* Decorative Excel-style guides share the checkbox rows' geometry, so they
+   stay connected when labels wrap or the list scrolls. */
+.cm-column-value-list > .ms-Checkbox { position: relative; padding-inline-start: 12px; }
+.cm-column-value-list > .ms-Checkbox::before,
+.cm-column-value-list > .ms-Checkbox::after {
+	content: "";
+	position: absolute;
+	inset-inline-start: 3px;
+	pointer-events: none;
+}
+.cm-column-value-list > .ms-Checkbox::before {
+	inset-block: 0;
+	border-inline-start: 1px dotted #a19f9d;
+}
+.cm-column-value-list > .ms-Checkbox::after {
+	inset-block-start: 50%;
+	inline-size: 9px;
+	border-block-start: 1px dotted #a19f9d;
+}
+.cm-column-value-list > .ms-Checkbox:first-child::before { inset-block-start: 50%; }
+.cm-column-value-list > .ms-Checkbox:last-child::before,
+.cm-column-value-list > .ms-Checkbox:has(+ [role="status"])::before { inset-block-end: 50%; }
+.cm-column-menu-footer { flex-shrink: 0; padding: 8px 12px 6px; }
+.cm-filter-note { color: #605e5c; font-size: 12px; line-height: 1.4; }
+.cm-filter-sort-summary { color: #605e5c; font-size: 12px; line-height: 1.5; padding: 4px 12px; }
+.cm-filter-error { color: #a4262c; padding: 8px 12px; }
+.cm-filter-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 6px; }
+.cm-filter-editor { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; padding: 12px; font-size: 14px; }
+.cm-filter-editor-body { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding: 0 2px 2px; }
+.cm-filter-editor-actions { flex-shrink: 0; padding-top: 12px; }
+.cm-filter-editor h2, .cm-filter-editor h3 { margin: 0 0 12px; font-size: 16px; font-weight: 600; }
+.cm-filter-editor-header { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.cm-filter-editor-header .ms-Button { min-width: 60px; }
+.cm-filter-editor-note { margin-bottom: 6px; }
+.cm-filter-editor-footnote { font-size: 12px; line-height: 1.45; color: #605e5c; margin-bottom: 12px; }
+.cm-filter-editor-second-toggle { margin: 12px 0; }
+.cm-filter-editor .cm-filter-editor-checkbox-label { display: flex; align-items: center; gap: 6px; }
+.cm-filter-editor-second-condition { margin-top: 12px; padding-top: 4px; border-top: 1px solid #edebe9; }
+.cm-filter-editor fieldset { min-width: 0; border: 0; padding: 0; margin: 0 0 12px; }
+.cm-filter-editor label { display: block; margin: 8px 0 4px; }
+.cm-filter-editor select, .cm-filter-editor input:not([type="checkbox"]):not([type="radio"]) { width: 100%; min-width: 0; min-height: 32px; border: 1px solid #8a8886; border-radius: 2px; padding: 5px 8px; font: inherit; background: white; color: #323130; }
+.cm-filter-editor input:focus-visible, .cm-filter-editor select:focus-visible { outline: 2px solid #0f6cbd; outline-offset: 1px; }
+.cm-filter-editor [role="alert"] { color: #a4262c; margin: 8px 0; }
+
+/* Conditions grow with their content instead of inheriting the checklist's
+   fixed height. Keep the same capped flex chain so only the fields scroll. */
+.cm-grid-column-callout-dynamic .ms-Callout-main {
+	container-type: normal;
+	height: auto;
+	display: flex;
+	flex-direction: column;
+}
+.cm-grid-column-callout-dynamic .cm-column-menu {
+	height: auto;
+	flex: 1 1 auto;
+}
+.cm-grid-column-callout-dynamic .cm-filter-editor,
+.cm-grid-column-callout-dynamic .cm-filter-editor-body { flex: 1 1 auto; }
+
+/* When the host leaves too little room for the commands and list together,
+   move scrolling to the complete menu body, never to both nested elements.
+   The footer remains reachable without scrolling at every supported size. */
+@container cm-column-callout (max-height: 440px) {
+	.cm-column-menu-body { display: block; overflow-y: auto; overscroll-behavior: contain; }
+	.cm-column-value-list { flex: none; min-height: 96px; overflow: visible; }
+}
+
+.cm-grid-column-callout .ms-Button {
+	border-radius: 2px;
+}
+
+.cm-model-driven-grid .cm-grid-active-filters {
+	background: #faf9f8;
+	border-top: 1px solid var(--cm-grid-border);
+}
+
+.cm-model-driven-grid .cm-grid-footer {
+	align-items: center;
+	background: #ffffff;
+	border-top: 1px solid var(--cm-grid-border-strong);
+	color: var(--cm-grid-muted);
+	display: flex;
+	min-height: 36px;
+	padding: 0 8px 0 12px;
+}
+
+.cm-model-driven-grid .cm-grid-record-count {
+	color: var(--cm-grid-muted);
+	font-size: 12px;
+}
+
+.cm-model-driven-grid .cm-grid-footer .ms-Button {
+	height: 32px;
+	min-width: 32px;
+}
+
+.cm-model-driven-grid .cm-grid-load-more {
+	padding-left: 8px;
+}
+
+.cm-model-driven-grid .cm-grid-load-error {
+	color: #a4262c;
+}
+
+.cm-model-driven-grid .cm-grid-loading-overlay {
+	align-items: center;
+	background: rgba(255, 255, 255, 0.72);
+	display: flex;
+	justify-content: center;
+	z-index: 20;
+}
+
+.cm-model-driven-grid .noRecords {
+	bottom: 36px;
+	color: var(--cm-grid-muted);
+	font-size: 14px;
+	gap: 8px;
+	left: 0;
+	pointer-events: none;
+	position: absolute;
+	right: 0;
+	top: 42px;
+	z-index: 2;
+}
+
+.cm-model-driven-grid .noRecords .ms-Icon {
+	color: #8a8886;
+	font-size: 24px;
+}
+
+.cm-model-driven-grid input::-ms-clear {
 	display: none;
 }
 
-.CraigMansell\.CMModelDrivenGrid div.noRecords {
-	/* Make the div appear on top of the grid */
-	position: absolute;
-	width: 100%;
-	top: 80px;
-	/* Large Icon */
-	font-size: 300%;
+@media (max-width: 480px) {
+	.cm-model-driven-grid .ms-DetailsHeader-cell,
+	.cm-model-driven-grid .ms-DetailsRow-cell {
+		/* Keep the same cell geometry as the desktop view. */
+		padding-left: 12px;
+		padding-right: 12px;
+	}
+	.cm-model-driven-grid .ms-DetailsHeader-cellIsCheck,
+	.cm-model-driven-grid .ms-DetailsRow-cellCheck { padding: 0; }
+
+	.cm-model-driven-grid .cm-grid-footer {
+		padding-left: 8px;
+	}
 }
+
+@media (forced-colors: active) {
+	.cm-model-driven-grid,
+	.cm-model-driven-grid .ms-DetailsList-headerWrapper,
+	.cm-model-driven-grid .ms-DetailsRow,
+	.cm-model-driven-grid .cm-grid-footer {
+		border-color: CanvasText;
+	}
+}
+.cm-child-cell { display: flex; align-items: center; min-width: 0; width: 100%; }
+.cm-child-value { flex: 1; min-width: 0; position: relative; min-height: 28px; }
+.cm-child-toggle { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 24px; width: 24px; height: 32px; padding: 0; border: 0; background: transparent; color: #605e5c; cursor: pointer; font-size: 12px; }
+.cm-child-toggle .ms-Icon { pointer-events: none; }
+.cm-child-toggle:hover { background: #edebe9; }
+.cm-child-toggle:focus-visible { outline: 2px solid #0078d4; outline-offset: -2px; }
+.cm-child-panel { margin: 0 12px 12px 40px; padding: 0 8px 8px; border-left: 2px solid #c7e0f4; background: #faf9f8; min-width: 320px; height: 368px; display: flex; flex-direction: column; }
+.cm-child-panel > .cm-model-driven-grid { flex: 1; min-height: 0; }
+.cm-grid-hierarchy .ms-DetailsHeader-cellIsCheck,
+.cm-grid-hierarchy .ms-DetailsRow-cellCheck { width: 56px; min-width: 56px; }
+.cm-grid-hierarchy .ms-DetailsRow-cellCheck { display: flex; align-items: center; }
+.cm-grid-hierarchy .ms-DetailsHeader-check,
+.cm-grid-hierarchy .ms-DetailsRow-check { flex: 0 0 32px; width: 32px; min-width: 32px; opacity: 1; }
+.cm-grid-selection-check { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; box-sizing: border-box; border: 1px solid #605e5c; border-radius: 1px; background: #fff; color: #fff; font-size: 10px; pointer-events: none; }
+.cm-grid-selection-check.is-checked { background: var(--cm-grid-accent); border-color: var(--cm-grid-accent); }
+@media (forced-colors: active) {
+    .cm-grid-selection-check { border-color: ButtonText; background: Canvas; }
+    .cm-grid-selection-check.is-checked { background: Highlight; border-color: Highlight; color: HighlightText; forced-color-adjust: none; }
+    .cm-child-toggle { color: ButtonText; }
+}
+.cm-child-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 0 4px 8px; font: 13px 'Segoe UI', sans-serif; }
+.cm-child-toolbar button, .cm-child-panel > [role="alert"] button { font: inherit; background: white; border: 1px solid #8a8886; padding: 4px 10px; cursor: pointer; }
+.cm-child-panel > [role="alert"] { padding: 8px; color: #a4262c; }
+.cm-child-commands { display: flex; gap: 8px; flex-wrap: wrap; }
+.cm-child-toolbar { gap: 12px; flex-wrap: wrap; }
+.cm-child-commands button:disabled { cursor: default; color: #a19f9d; }
+.cm-child-retained[hidden] { display: none !important; }
+.cm-child-retained { display: flow-root; }
+.cm-grid-analysis-status, .cm-grid-list-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 4px 8px; border-bottom: 1px solid #edebe9; font-size: 12px; }
+.cm-grid-totals { display: flex; flex-wrap: wrap; gap: 16px; padding: 8px 12px; background: #f3f2f1; border-bottom: 1px solid #edebe9; font-size: 12px; }
+.cm-grid-choice-badge { border-radius: 12px; padding: 2px 8px; white-space: nowrap; }
+.cm-grid-list-row { box-sizing: border-box; padding: 0 8px; border-bottom: 1px solid #edebe9; }
+.cm-grid-list-row.is-banded { background: #faf9f8; }
+.cm-grid-list-row[aria-selected="true"] { background: #deecf9; }
+.cm-grid-list-row-head { display: flex; align-items: center; gap: 8px; height: 40px; }
+.cm-grid-list-row-head .cm-child-toggle { position: static; }
+.cm-grid-record-link { color: #0078d4; background: none; border: none; font: inherit; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.cm-grid-record-link:focus-visible { outline: 2px solid #0078d4; }
+.cm-grid-list-field { display: flex; align-items: center; height: 36px; min-width: 0; }
+.cm-grid-list-field-label { width: 38%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #605e5c; }
+.cm-grid-list-field-value { flex: 1; min-width: 0; position: relative; height: 100%; overflow: hidden; }
+.cm-grid-list-mode .ms-DetailsList, .cm-grid-list-mode .ms-DetailsList-contentWrapper { min-width: 0 !important; width: 100% !important; }
+.cm-grid-avatar { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: #e1dfdd; font-size: 11px; }
+@media (forced-colors: active) { .cm-grid-choice-badge, .cm-grid-totals, .cm-grid-list-row { background: Canvas !important; color: CanvasText !important; } .cm-grid-list-row[aria-selected="true"] { outline: 2px solid Highlight; } }

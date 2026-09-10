@@ -5,14 +5,25 @@
 	"scripts": {
 		"build": "pcf-scripts build",
 		"clean": "pcf-scripts clean",
-		"lint": "pcf-scripts lint",
-		"lint:fix": "pcf-scripts lint fix",
+		"dev:watch": "node scripts/dev-loop-watch.js",
+		"lint": "eslint CMModelDrivenGrid --ext .ts,.tsx",
+		"lint:fix": "eslint CMModelDrivenGrid --ext .ts,.tsx --fix",
 		"rebuild": "pcf-scripts rebuild",
 		"start": "pcf-scripts start",
 		"start:watch": "pcf-scripts start watch",
+		"demo": "node scripts/start-demo.js",
+		"test:local": "npm run test:core && npm run test:inline-edit && npm run test:cell-selection && npm run test:grid && npm run test:filters && npm run test:children && npm run test:demo-hierarchy && npm run test:dev-tools",
+		"test:demo-hierarchy": "tsx scripts/local-demo-hierarchy-test.ts",
+		"test:children": "tsx scripts/local-child-records-test.ts && tsx scripts/local-native-hierarchy-test.ts",
+		"test:filters": "tsx scripts/local-filter-semantics-test.ts && tsx scripts/local-demo-filter-test.ts && tsx scripts/local-filter-editor-test.tsx",
+		"test:core": "tsx scripts/local-core-logic-test.ts && tsx scripts/local-parity-logic-test.ts",
+		"test:inline-edit": "tsx scripts/local-inline-edit-test.tsx",
+		"test:cell-selection": "tsx scripts/local-cell-selection-test.tsx",
+		"test:grid": "tsx scripts/local-grid-regression-test.tsx",
+		"test:dev-tools": "node scripts/local-dev-tools-test.js",
 		"refreshTypes": "pcf-scripts refreshTypes",
 		"push:dev": "pac pcf push --environment https://capricorndevelopment.crm4.dynamics.com/ --publisher-prefix cm --incremental",
-		"dev:loop": "node version-bump.js && npm run build && npm run push:dev"
+		"dev:loop": "npm run test:local && npm run build"
 	},
 	"dependencies": {
 		"@fluentui/react": "^8.121.3",

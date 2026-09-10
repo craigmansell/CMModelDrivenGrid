@@ -6,6 +6,7 @@ import * as Utilities from "@fluentui/react/lib/Utilities";
 import * as UtilitiesCommonJs from "@fluentui/react/lib-commonjs/Utilities";
 import { List } from "@fluentui/react/lib/List";
 import { Grid } from "../CMModelDrivenGrid/Grid";
+import { initializeIcons } from "@fluentui/react/lib/Icons";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {
 	url: "http://localhost/",
@@ -14,6 +15,11 @@ const dom = new JSDOM("<!doctype html><html><body></body></html>", {
 // Minimal browser-like globals for React + Fluent UI rendering in Node.
 globalThis.window = dom.window as unknown as Window & typeof globalThis;
 globalThis.document = dom.window.document;
+initializeIcons(undefined, { disableWarnings: true });
+Object.defineProperty(dom.window.HTMLCanvasElement.prototype, "getContext", {
+	value: () => ({ font: "", measureText: (text: string) => ({ width: text.length * 7 }) }),
+	configurable: true,
+});
 Object.defineProperty(globalThis, "navigator", {
 	value: dom.window.navigator,
 	configurable: true,
@@ -215,6 +221,7 @@ async function run(): Promise<void> {
 				setSelectedRecords: () => undefined,
 				onNavigate: () => undefined,
 				onOpenLookup: () => undefined,
+				onSelectAllRecords: async () => undefined,
 				onSort: () => undefined,
 				onFilter: () => undefined,
 				loadFirstPage: () => undefined,
@@ -223,40 +230,31 @@ async function run(): Promise<void> {
 				onUpdateCell: async (rid: string, col: string, value: string, dataType: string) => {
 					updateCalls.push({ recordId: rid, columnName: col, value, dataType });
 				},
-				onFullScreen: () => undefined,
-				isFullScreen: false,
 			}),
 			container
 		);
 	});
 
-	const editableCell = container.querySelector('span[title="Click to edit"]');
+	const editableCell = Array.from(container.querySelectorAll("div")).find((element) => {
+		const reactPropKey = Object.keys(element).find(
+			(key) => key.startsWith("__reactProps$") || key.startsWith("__reactEventHandlers$")
+		);
+		if (!reactPropKey) return false;
+		const reactProps = (element as unknown as Record<string, unknown>)[reactPropKey] as
+			| { onMouseDown?: unknown; onMouseEnter?: unknown; onDoubleClick?: unknown }
+			| undefined;
+		return (
+			typeof reactProps?.onMouseDown === "function" &&
+			typeof reactProps.onMouseEnter === "function" &&
+			typeof reactProps.onDoubleClick === "function"
+		);
+	});
 	if (!editableCell) {
 		throw new Error("Editable cell was not rendered.");
 	}
 
 	await act(async () => {
-		const reactPropKey = Object.keys(editableCell).find(
-			(key) => key.startsWith("__reactProps$") || key.startsWith("__reactEventHandlers$")
-		);
-		if (!reactPropKey) {
-			throw new Error("Could not locate React props on editable cell.");
-		}
-		const reactProps = (editableCell as unknown as Record<string, unknown>)[reactPropKey] as
-			| { onClick?: (event: { preventDefault: () => void; stopPropagation: () => void }) => void }
-			| undefined;
-		if (!reactProps?.onClick) {
-			throw new Error("Editable cell is missing React onClick handler.");
-		}
-		try {
-			reactProps.onClick({
-				preventDefault: () => undefined,
-				stopPropagation: () => undefined,
-			});
-		} catch (error) {
-			console.error("Click handler error:", error);
-			throw error;
-		}
+		Simulate.doubleClick(editableCell);
 		await Promise.resolve();
 	});
 

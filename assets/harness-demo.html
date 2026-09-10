@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DrivenGrid — interactive test harness</title>
+  <link rel="stylesheet" href="/bundle.css">
+  <style>
+    body { margin:0; font:14px "Segoe UI",sans-serif; background:#f5f5f5; color:#323130; }
+    .demo-header { background:#48245f; color:white; padding:15px 24px; font-size:15px; }
+    #demo-root { height:100vh; display:flex; flex-direction:column; }
+    .demo-header { flex-shrink:0; }
+    .demo-main { padding:20px 24px; flex:1; min-height:0; display:flex; flex-direction:column; }
+    .demo-title { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    h1 { font-size:24px; font-weight:600; margin:0 0 6px; }
+    .demo-caption { color:#605e5c; margin:0; }
+    .demo-help { padding:12px 0; color:#605e5c; line-height:1.5; }
+    .demo-reset { background:white; border:1px solid #8a8886; padding:7px 14px; font:inherit; cursor:pointer; white-space:nowrap; }
+    .demo-reset:focus-visible { outline:2px solid #0f6cbd; outline-offset:2px; }
+    .demo-title, .demo-help { flex-shrink:0; }
+    .demo-grid { flex:1; min-height:240px; background:white; }
+    @media(max-width:600px) { .demo-main { padding:14px 12px; } .demo-header { padding:14px 12px; } .demo-title { align-items:flex-start; } }
+  </style>
+</head>
+<body><div id="demo-root"></div><script src="/bundle.js"></script></body>
+</html>

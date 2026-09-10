@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="CraigMansell" constructor="CMModelDrivenGrid" version="1.0.47" display-name-key="CMModelDrivenGrid" description-key="CMModelDrivenGrid" control-type="standard">
+  <control namespace="CraigMansell" constructor="CMModelDrivenGrid" version="1.0.111" display-name-key="DrivenGrid_Display" description-key="DrivenGrid_Description" control-type="standard">
 
     <!--external-service-usage node declares whether this 3rd party PCF control is using external service or not, if yes, this control will be considered as premium and please also add the external domain it is using.
     If it is not using any external service, please set the enabled="false" and DO NOT add any domain below. The "enabled" will be false by default.
@@ -26,8 +26,38 @@
     <property name="HighlightColor" display-name-key="HighlightColor_Disp" description-key="HighlightColor_Desc" of-type="SingleLine.Text" usage="input" required="false" default-value=""/>
     <property name="EnableLookupLinks" display-name-key="EnableLookupLinks_Disp" description-key="EnableLookupLinks_Desc" of-type="TwoOptions" usage="input" required="false" default-value="true"/>
     <property name="EnableInlineEdit" display-name-key="EnableInlineEdit_Disp" description-key="EnableInlineEdit_Desc" of-type="TwoOptions" usage="input" required="false" default-value="true"/>
+    <property name="LookupFilterConfig" display-name-key="LookupFilterConfig_Disp" description-key="LookupFilterConfig_Desc" of-type="SingleLine.Text" usage="input" required="false" default-value=""/>
+    <property name="LookupFilterConfig2" display-name-key="LookupFilterConfig2_Disp" description-key="LookupFilterConfig2_Desc" of-type="SingleLine.Text" usage="input" required="false" default-value=""/>
+    <property name="LookupFilterConfig3" display-name-key="LookupFilterConfig3_Disp" description-key="LookupFilterConfig3_Desc" of-type="SingleLine.Text" usage="input" required="false" default-value=""/>
+    <property name="LookupFilterConfig4" display-name-key="LookupFilterConfig4_Disp" description-key="LookupFilterConfig4_Desc" of-type="SingleLine.Text" usage="input" required="false" default-value=""/>
+    <property name="LookupFilterConfig5" display-name-key="LookupFilterConfig5_Disp" description-key="LookupFilterConfig5_Desc" of-type="SingleLine.Text" usage="input" required="false" default-value=""/>
+    <property name="InfiniteScroll" display-name-key="InfiniteScroll_Disp" description-key="InfiniteScroll_Desc" of-type="TwoOptions" usage="input" required="false" default-value="true"/>
+    <property name="MaxRows" display-name-key="MaxRows_Disp" description-key="MaxRows_Desc" of-type="Whole.None" usage="input" required="false"/>
     <property name="SubGridHeight" display-name-key="SubGridHeight_Disp" description-key="SubGridHeight_Desc" of-type="Whole.None" usage="input" required="false"/>
 
+    <property name="EnableChildRows" display-name-key="EnableChildRows_Display" description-key="EnableChildRows_Description" of-type="TwoOptions" usage="input" required="false" default-value="false"/>
+    <property name="EnableNativeChildSelection" display-name-key="EnableNativeChildSelection_Display" description-key="EnableNativeChildSelection_Description" of-type="TwoOptions" usage="input" required="false" default-value="false"/>
+    <property name="DisableChildEditing" display-name-key="DisableChildEditing_Display" description-key="DisableChildEditing_Description" of-type="TwoOptions" usage="input" required="false" default-value="false"/>
+    <property name="EnableChildCommands" display-name-key="EnableChildCommands_Display" description-key="EnableChildCommands_Description" of-type="TwoOptions" usage="input" required="false" default-value="false"/>
+    <property name="ChildContextLookup" display-name-key="ChildContextLookup_Display" description-key="ChildContextLookup_Description" of-type="SingleLine.Text" usage="input" required="false"/>
+    <property name="ChildParentLookup" display-name-key="ChildParentLookup_Display" description-key="ChildParentLookup_Description" of-type="SingleLine.Text" usage="input" required="false"/>
+    <property name="ChildViewId" display-name-key="ChildViewId_Display" description-key="ChildViewId_Description" of-type="SingleLine.Text" usage="input" required="false"/>
+    <property name="EnableGrouping" display-name-key="EnableGrouping_Display" description-key="EnableGrouping_Description" of-type="TwoOptions" usage="input" required="false" default-value="true"/>
+    <property name="EnableAggregation" display-name-key="EnableAggregation_Display" description-key="EnableAggregation_Description" of-type="TwoOptions" usage="input" required="false" default-value="true"/>
+    <property name="EnableColumnMoving" display-name-key="EnableColumnMoving_Display" description-key="EnableColumnMoving_Description" of-type="TwoOptions" usage="input" required="false" default-value="true"/>
+    <property name="EnableMultipleSelection" display-name-key="EnableMultipleSelection_Display" description-key="EnableMultipleSelection_Description" of-type="TwoOptions" usage="input" required="false" default-value="true"/>
+    <property name="EnableRangeSelection" display-name-key="EnableRangeSelection_Display" description-key="EnableRangeSelection_Description" of-type="TwoOptions" usage="input" required="false" default-value="true"/>
+    <property name="EnableFiltering" display-name-key="EnableFiltering_Display" description-key="EnableFiltering_Description" of-type="TwoOptions" usage="input" required="false" default-value="true"/>
+    <property name="EnableSorting" display-name-key="EnableSorting_Display" description-key="EnableSorting_Description" of-type="TwoOptions" usage="input" required="false" default-value="true"/>
+    <property name="ShowTypeIcons" display-name-key="ShowTypeIcons_Display" description-key="ShowTypeIcons_Description" of-type="TwoOptions" usage="input" required="false" default-value="false"/>
+    <property name="ShowStatusIcons" display-name-key="ShowStatusIcons_Display" description-key="ShowStatusIcons_Description" of-type="TwoOptions" usage="input" required="false" default-value="false"/>
+    <property name="ShowChoiceColors" display-name-key="ShowChoiceColors_Display" description-key="ShowChoiceColors_Description" of-type="TwoOptions" usage="input" required="false" default-value="false"/>
+    <property name="ReflowBehavior" display-name-key="ReflowBehavior_Display" description-key="ReflowBehavior_Description" of-type="SingleLine.Text" usage="input" required="false" default-value="auto"/>
+    <property name="ListColumns" display-name-key="ListColumns_Display" description-key="ListColumns_Description" of-type="Whole.None" usage="input" required="false" default-value="3"/>
+    <property name="ShowAvatar" display-name-key="ShowAvatar_Display" description-key="ShowAvatar_Description" of-type="TwoOptions" usage="input" required="false" default-value="false"/>
+    <property name="ShowListColumnNames" display-name-key="ShowListColumnNames_Display" description-key="ShowListColumnNames_Description" of-type="TwoOptions" usage="input" required="false" default-value="true"/>
+    <property name="BandedListRows" display-name-key="BandedListRows_Display" description-key="BandedListRows_Description" of-type="TwoOptions" usage="input" required="false" default-value="true"/>
+    <property name="AccessibleLabel" display-name-key="AccessibleLabel_Display" description-key="AccessibleLabel_Description" of-type="SingleLine.Text" usage="input" required="false" default-value="Records"/>
     <resources>
       <code path="index.ts" order="1"/>
       <resx path="strings/CMModelDrivenGrid.1033.resx" version="1.0.0" />

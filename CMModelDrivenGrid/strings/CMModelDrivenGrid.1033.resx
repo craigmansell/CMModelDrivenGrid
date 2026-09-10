@@ -117,6 +117,18 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="EnableChildRows_Display" xml:space="preserve"><value>Enable expandable child rows</value></data>
+  <data name="EnableChildRows_Description" xml:space="preserve"><value>Show a separate, lazily loaded child grid beneath each expanded record.</value></data>
+  <data name="ChildParentLookup_Display" xml:space="preserve"><value>Child parent lookup</value></data>
+  <data name="ChildParentLookup_Description" xml:space="preserve"><value>Logical name of the self-referencing parent lookup, for example cm_parenttemplateoption.</value></data>
+  <data name="ChildViewId_Display" xml:space="preserve"><value>Child view ID</value></data>
+  <data name="ChildViewId_Description" xml:space="preserve"><value>GUID of a public view of the same table, including the grid columns. Use a view that includes children, not one restricted to top-level records.</value></data>
+  <data name="DrivenGrid_Display" xml:space="preserve">
+    <value>DrivenGrid</value>
+  </data>
+  <data name="DrivenGrid_Description" xml:space="preserve">
+    <value>A model-driven dataset grid with column filters, sorting, inline editing and infinite scrolling.</value>
+  </data>
   <data name="Records_Dataset_Display" xml:space="preserve">
     <value>Records</value>
     <comment/>
@@ -161,8 +173,48 @@
     <value>When enabled, double-click editable cells to update values directly in the grid.</value>
     <comment/>
   </data>
+  <data name="LookupFilterConfig_Disp" xml:space="preserve">
+    <value>Lookup Filter Config (JSON)</value>
+    <comment/>
+  </data>
+  <data name="LookupFilterConfig_Desc" xml:space="preserve">
+    <value>Optional JSON lookup filters. Format: {"default":"statecode eq 0","byEntity":{"account":"statecode eq 0"},"byColumn":{"cm_component":"statecode eq 0"},"byColumnAndEntity":{"cm_component@account":"statecode eq 0"}}. If not JSON, value is used as a global OData filter clause.</value>
+    <comment/>
+  </data>
+  <data name="LookupFilterConfig2_Disp" xml:space="preserve">
+    <value>Lookup Filter Config (JSON) - Part 2</value>
+    <comment/>
+  </data>
+  <data name="LookupFilterConfig2_Desc" xml:space="preserve">
+    <value>Optional continuation of Lookup Filter Config JSON text.</value>
+    <comment/>
+  </data>
+  <data name="LookupFilterConfig3_Disp" xml:space="preserve">
+    <value>Lookup Filter Config (JSON) - Part 3</value>
+    <comment/>
+  </data>
+  <data name="LookupFilterConfig3_Desc" xml:space="preserve">
+    <value>Optional continuation of Lookup Filter Config JSON text.</value>
+    <comment/>
+  </data>
+  <data name="LookupFilterConfig4_Disp" xml:space="preserve">
+    <value>Lookup Filter Config (JSON) - Part 4</value>
+    <comment/>
+  </data>
+  <data name="LookupFilterConfig4_Desc" xml:space="preserve">
+    <value>Optional continuation of Lookup Filter Config JSON text.</value>
+    <comment/>
+  </data>
+  <data name="LookupFilterConfig5_Disp" xml:space="preserve">
+    <value>Lookup Filter Config (JSON) - Part 5</value>
+    <comment/>
+  </data>
+  <data name="LookupFilterConfig5_Desc" xml:space="preserve">
+    <value>Optional continuation of Lookup Filter Config JSON text.</value>
+    <comment/>
+  </data>
   <data name="HighlightIndicator_Disp" xml:space="preserve">
-    <value>Hightlight Indicator Field</value>
+    <value>Highlight Indicator Field</value>
     <comment/>
   </data>
   <data name="HighlightIndicator_Desc" xml:space="preserve">
@@ -185,12 +237,24 @@
     <value>Does not contain data</value>
     <comment/>
   </data>
-  <data name="Label_ShowFullScreen" xml:space="preserve">
-    <value>Show Full Screen</value>
-    <comment/>
-  </data>
   <data name="Label_Grid_Footer_RecordCount" xml:space="preserve">
     <value>{0} records ({1} Selected)</value>
+    <comment/>
+  </data>
+  <data name="MaxRows_Disp" xml:space="preserve">
+    <value>Max Rows Per Page</value>
+    <comment/>
+  </data>
+  <data name="MaxRows_Desc" xml:space="preserve">
+    <value>Optional page size for dataset queries. Example: 50. Leave empty to use platform default.</value>
+    <comment/>
+  </data>
+  <data name="InfiniteScroll_Disp" xml:space="preserve">
+    <value>Enable Infinite Scrolling</value>
+    <comment/>
+  </data>
+  <data name="InfiniteScroll_Desc" xml:space="preserve">
+    <value>Load the next dataset page automatically as the user reaches the end of the grid. Enabled by default.</value>
     <comment/>
   </data>
   <data name="SubGridHeight_Disp" xml:space="preserve">
@@ -205,4 +269,44 @@
     <value>No records found</value>
     <comment/>
   </data>
+  <data name="DisableChildEditing_Display" xml:space="preserve"><value>Read-only child options</value></data>
+  <data name="DisableChildEditing_Description" xml:space="preserve"><value>Disable child cell editing without disabling parent editing. This does not change Dataverse permissions or native command rules.</value></data>
+  <data name="EnableChildCommands_Display" xml:space="preserve"><value>Legacy child commands (unused)</value></data>
+  <data name="EnableChildCommands_Description" xml:space="preserve"><value>Retained for existing form compatibility. Does not display buttons inside child panels. Configure native child selection separately.</value></data>
+  <data name="EnableNativeChildSelection_Display" xml:space="preserve"><value>Native child command-bar selection</value></data>
+  <data name="EnableNativeChildSelection_Description" xml:space="preserve"><value>Load selected children into the native host dataset before enabling its commands. Requires a dedicated view that includes both roots and children, with the same parent relationship scope. Do not use a parent-only view.</value></data>
+  <data name="ChildContextLookup_Display" xml:space="preserve"><value>Child template/context lookup</value></data>
+  <data name="ChildContextLookup_Description" xml:space="preserve"><value>Optional simple lookup to inherit from the parent when adding children, such as cm_itemtemplate. Must differ from the parent-option lookup.</value></data>
+  <data name="EnableGrouping_Display" xml:space="preserve"><value>Enable grouping</value></data>
+  <data name="EnableGrouping_Description" xml:space="preserve"><value>Group the complete filtered level. Requires infinite scrolling.</value></data>
+  <data name="EnableAggregation_Display" xml:space="preserve"><value>Enable totals</value></data>
+  <data name="EnableAggregation_Description" xml:space="preserve"><value>Calculate complete-level sum, average, minimum and maximum. Requires infinite scrolling.</value></data>
+  <data name="EnableColumnMoving_Display" xml:space="preserve"><value>Enable column moving</value></data>
+  <data name="EnableColumnMoving_Description" xml:space="preserve"><value>Allow drag-and-drop and menu-based column moving.</value></data>
+  <data name="EnableMultipleSelection_Display" xml:space="preserve"><value>Enable multiple selection</value></data>
+  <data name="EnableMultipleSelection_Description" xml:space="preserve"><value>Allow more than one selected row, up to the Dynamics selection limit.</value></data>
+  <data name="EnableRangeSelection_Display" xml:space="preserve"><value>Enable cell range selection</value></data>
+  <data name="EnableRangeSelection_Description" xml:space="preserve"><value>Allow rectangular cell selection and copying to Excel.</value></data>
+  <data name="EnableFiltering_Display" xml:space="preserve"><value>Enable filtering</value></data>
+  <data name="EnableFiltering_Description" xml:space="preserve"><value>Allow users to apply grid column filters.</value></data>
+  <data name="EnableSorting_Display" xml:space="preserve"><value>Enable sorting</value></data>
+  <data name="EnableSorting_Description" xml:space="preserve"><value>Allow users to change grid column sorting.</value></data>
+  <data name="ShowTypeIcons_Display" xml:space="preserve"><value>Show column type icons</value></data>
+  <data name="ShowTypeIcons_Description" xml:space="preserve"><value>Show an icon identifying the data type in each column header.</value></data>
+  <data name="ShowStatusIcons_Display" xml:space="preserve"><value>Show status icons</value></data>
+  <data name="ShowStatusIcons_Description" xml:space="preserve"><value>Show state and status indicator icons alongside text.</value></data>
+  <data name="ShowChoiceColors_Display" xml:space="preserve"><value>Show choice colours</value></data>
+  <data name="ShowChoiceColors_Description" xml:space="preserve"><value>Use the colours supplied by choice metadata, with contrasting text.</value></data>
+  <data name="ReflowBehavior_Display" xml:space="preserve"><value>Reflow behaviour</value></data>
+  <data name="ReflowBehavior_Description" xml:space="preserve"><value>Use grid, list or auto. Auto uses a compact list below 480 pixels.</value></data>
+  <data name="ListColumns_Display" xml:space="preserve"><value>Columns in list rows</value></data>
+  <data name="ListColumns_Description" xml:space="preserve"><value>Number of fields shown per compact list row, from 1 to 10.</value></data>
+  <data name="ShowAvatar_Display" xml:space="preserve"><value>Show list initials</value></data>
+  <data name="ShowAvatar_Description" xml:space="preserve"><value>Show an initials avatar in compact list rows. No external image requests.</value></data>
+  <data name="ShowListColumnNames_Display" xml:space="preserve"><value>Show list field labels</value></data>
+  <data name="ShowListColumnNames_Description" xml:space="preserve"><value>Show column names in compact list rows.</value></data>
+  <data name="BandedListRows_Display" xml:space="preserve"><value>Banded list rows</value></data>
+  <data name="BandedListRows_Description" xml:space="preserve"><value>Use alternate shading in compact list rows.</value></data>
+  <data name="AccessibleLabel_Display" xml:space="preserve"><value>Accessible grid label</value></data>
+  <data name="AccessibleLabel_Description" xml:space="preserve"><value>Screen-reader label for this grid.</value></data>
 </root>
