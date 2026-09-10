@@ -1,5 +1,11 @@
 # DrivenGrid 1.0.112 — Excel-preserving feature pass
 
+**Later pre-sandbox review: HOLD.** The existing suite still passes, but three
+supplementary probes fail (filter rejection/loading recovery, compact keyboard
+navigation and late column read-only enforcement). See
+[the fresh review](REVIEW-PRE-SANDBOX-2026-09-10.md). The evidence below is the earlier
+feature-pass record, not current release approval.
+
 10 September 2026. Independent DrivenGrid PCF retained; no Microsoft grid replacement.
 Unmanaged candidate solution **1.0.91.0**, control **1.0.112**. This package is **not
 deployed**. Last verified sandbox remains 1.0.89.0 / 1.0.110.

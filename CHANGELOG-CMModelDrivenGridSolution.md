@@ -1,5 +1,12 @@
 # CMModelDrivenGridSolution changelog
 
+## Pre-sandbox review of candidate 1.0.91.0 / control 1.0.112 — HOLD — 2026-09-10
+
+- Re-ran the complete local suite, type checks, unmanaged Release build, package/resource readback and dependency audit. Existing regressions pass, including all 42,000 fixture records and 10,000-row strict-host paging; shipped-dependency audit is clean, nine development-tool entries remain.
+- Added opt-in supplementary release probes. They reproduce three unfixed defects: ordinary filter rejection can leave loading/UI filter state stuck, compact End targets an undisplayed column, and an asynchronous lookup save misses a column becoming read-only during metadata resolution. Hold release sign-off until these pass; no product-source or version change in this review.
+- Rechecked local child Open/Activate targeting, collapse selection clearing, 1,000-row Select All, Excel menu, Contains Atlas (334 matches) and descending sort preserving the filter. No Dataverse deployment, record writes, component changes or production action.
+- Evidence, reproduction command, exact rebuilt archive identity and acceptance gaps: `REVIEW-PRE-SANDBOX-2026-09-10.md`. Earlier feature-validation/comparison documents now link to the hold decision.
+
 ## Unreleased candidate 1.0.91.0 / control 1.0.112 — keep Excel, close further gaps — 2026-09-10
 
 - Keep the independent DrivenGrid control, Excel-style searchable value checklist, dotted guides, dynamic condition panel, AND/OR filters, range copying and single shared command bar. Do not introduce a Microsoft grid dependency, fullscreen, a child toolbar or an Add to current sort item.

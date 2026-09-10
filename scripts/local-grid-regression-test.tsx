@@ -883,7 +883,12 @@ async function testLookupInteractionSafety(): Promise<void> {
 	assert(writes.length===0,'A dialog closing after unmount must not save.');
 }
 
-run()
+// Keep review probes explicit: they document currently failing release gates,
+// while the existing regression suite remains independently runnable.
+const runSelectedSuite = process.argv.includes('--pre-sandbox-review')
+	? () => (require('./local-pre-sandbox-review-probes') as typeof import('./local-pre-sandbox-review-probes')).runPreSandboxReviewProbes({container, resources, renderGrid, unmount: () => { ReactDOM.unmountComponentAtNode(container); }})
+	: run;
+runSelectedSuite()
 	.then(() => {
 		ReactDOM.unmountComponentAtNode(container);
 		process.exit(0);

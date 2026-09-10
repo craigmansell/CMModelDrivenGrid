@@ -2,6 +2,10 @@
 
 10 September 2026. Candidate **1.0.112 / unmanaged solution 1.0.91.0**.
 
+**Pre-sandbox recheck: HOLD.** Three additional failure-path probes fail despite
+the existing suite passing. See [the current release review](REVIEW-PRE-SANDBOX-2026-09-10.md).
+This feature inventory does not supersede that release gate.
+
 ## Outcome
 
 This batch adds substantial functionality and fixes the confirmed correctness issues,
