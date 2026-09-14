@@ -191,6 +191,72 @@ async function run() {
     assert.equal(component.currentPage,200);
     assert.deepEqual(component.sortedRecordsIds,largeIds,'All 10,000 rows must be reachable once, in order, in 50-row batches.');
     console.log('10,000-row native paging: 200 batches, no duplicates, no missing rows, no overlapping host calls.');
+    // Selection queries restart physical paging while retaining already-rendered roots.
+    // Catch up over overlapping pages without reporting a false empty-page failure.
+    const cachedRoots=[rootId,rootTwo,rootThree];
+    component.accumulatedRecords=Object.fromEntries(cachedRoots.map(id=>[id,row(id)]));
+    component.accumulatedSortedIds=[...cachedRoots];component.currentPage=1;
+    projection.dataset.records={[rootId]:row(rootId)};projection.dataset.sortedRecordIds=[rootId];
+    projection.dataset.paging.hasNextPage=true;projection.dataset.paging.hasPreviousPage=false;
+    component.context.updatedProperties=['dataset'];component.updateView(component.context);
+    let catchupRequests=0;
+    projection.dataset.paging.loadNextPage=()=>{
+        catchupRequests++;
+        const id=cachedRoots[catchupRequests];
+        projection.dataset.loading=true;component.updateView(component.context);
+        queueMicrotask(()=>{
+            projection.dataset.records={[id]:row(id)};projection.dataset.sortedRecordIds=[id];
+            projection.dataset.paging.hasPreviousPage=true;projection.dataset.paging.hasNextPage=catchupRequests<2;
+            projection.dataset.loading=false;component.updateView(component.context);
+        });
+    };
+    const catchup=component.loadNextPage();
+    assert.equal(catchup,component.loadNextPage(),'Catch-up must still share one paging promise.');
+    await catchup;
+    assert.equal(catchupRequests,2,'Already-cached root pages must be consumed until a new row or end-of-data.');
+    assert.equal(projection.dataset.paging.hasNextPage,false);
+    assert.deepEqual(component.sortedRecordsIds,cachedRoots,'Catch-up must keep stable, unique retained roots.');
+    projection.dataset.paging.hasNextPage=true;
+    projection.dataset.paging.loadNextPage=()=>{component.updateView(component.context);};
+    await assert.rejects(component.loadNextPage(),/same page/,'A genuinely repeated physical page must still fail safely.');
+
+    const rootFour='10000000-0000-4000-8000-000000000004';
+    projection.dataset.records={[rootId]:row(rootId)};projection.dataset.sortedRecordIds=[rootId];
+    let resumeRequests=0;
+    projection.dataset.paging.loadNextPage=()=>{
+        resumeRequests++;const id=resumeRequests===1?rootTwo:rootFour;
+        projection.dataset.records={[id]:row(id)};projection.dataset.sortedRecordIds=[id];
+        component.updateView(component.context);
+    };
+    await component.loadNextPage();
+    assert.equal(resumeRequests,2,'Catch-up stops promptly at the first newly visible root.');
+    assert.deepEqual(component.sortedRecordsIds,[...cachedRoots,rootFour]);
+    projection.dataset.paging.loadNextPage=()=>{
+        testable.nativeHierarchy.busy=true;
+        projection.dataset.records={[rootTwo]:row(rootTwo)};projection.dataset.sortedRecordIds=[rootTwo];
+        component.updateView(component.context);
+    };
+    await component.loadNextPage();
+    testable.nativeHierarchy.busy=false;
+    // Power Apps may replace the dataset/context object on every update instead
+    // of mutating the snapshot which issued loadNextPage. Read the delivered page.
+    const immutableFirst={...projection.dataset,records:{[rootId]:row(rootId)},sortedRecordIds:[rootId],paging:{...projection.dataset.paging,hasNextPage:true}};
+    component.context={...component.context,parameters:{...component.context.parameters,records:immutableFirst}};
+    component.updateView(component.context);
+    let immutableRequests=0;
+    const immutableNext=()=>{
+        immutableRequests++;
+        const id=immutableRequests===1?rootTwo:rootThree;
+        const current=component.context.parameters.records;
+        const next={...current,records:{[id]:row(id)},sortedRecordIds:[id],paging:{...current.paging,hasNextPage:immutableRequests<2,loadNextPage:immutableNext}};
+        component.updateView({...component.context,parameters:{...component.context.parameters,records:next}});
+    };
+    immutableFirst.paging.loadNextPage=immutableNext;
+    await component.loadNextPage();
+    assert.equal(immutableRequests,2,'Catch-up must follow replacement dataset snapshots through EOF.');
+    assert.equal(immutableFirst.paging.hasNextPage,true,'The issuing snapshot deliberately remains unchanged.');
+    assert.equal(component.context.parameters.records.paging.hasNextPage,false);
+    console.log('Retained-root selection-query catch-up passed.');
     console.log('Native hierarchy query, strict-host selection, filtering, switching, cancellation and failure checks passed.');
 }
 

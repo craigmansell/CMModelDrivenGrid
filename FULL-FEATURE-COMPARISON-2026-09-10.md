@@ -1,18 +1,28 @@
 # DrivenGrid vs Power Apps grid — updated full review
 
-10 September 2026. Candidate **1.0.113 / unmanaged solution 1.0.92.0**.
+10 September feature review; sandbox acceptance updated **14 September 2026**.
+Current sandbox: **1.0.117 / unmanaged solution 1.0.96.0**.
 
 **Pre-sandbox defect gates resolved locally in 1.0.113.** All three defects from
 the [1.0.112 review](REVIEW-PRE-SANDBOX-2026-09-10.md) are fixed. Expanded regressions
 are part of the passing normal suite; see [current fix validation](VALIDATION-FIXES-2026-09-10.md).
-The candidate is not deployed and signed-in acceptance remains required.
+Update 14 September: publication completed, 174/174 live filter comparisons passed
+on 1.0.114, and final 1.0.117 smoke checks passed for parent/child selection, native
+child Edit targeting, complete totals/grouping, representative filters and reversible
+editing. All 106 original QA fixtures are restored. The batch fixed promise-lifetime
+paging, system-managed column editing, and retained-root/replacement-dataset paging.
+See [version-specific evidence and remaining checks](SANDBOX-VALIDATION-2026-09-14.md).
+Live clipboard readback is unverified because the test browser's virtual clipboard
+does not expose that workflow; local TSV and live keyboard range tests pass.
 
 ## Outcome
 
 This batch adds substantial functionality and fixes the confirmed correctness issues,
-but **DrivenGrid is not a complete native-grid replacement**. The code and local
-harness include these changes; the last verified sandbox release is **1.0.110 / 1.0.89.0**.
-No deployment or business-data change was made during this implementation batch.
+but **DrivenGrid is not a complete native-grid replacement**. The current sandbox
+release is **1.0.117 / 1.0.96.0**, ready for sandbox user acceptance, not production
+approval. The 10 September implementation was local-only; the 14 September follow-up
+deployed PCF-only changes and exercised/restored disposable QA data. No production,
+form, view, ribbon, schema, publisher or security changes were made in that follow-up.
 
 Added: 30 date conditions; complete-level groups and totals; column movement and
 width editor; compact list/reflow; choice colours/type icons; configurable selection,
@@ -44,7 +54,7 @@ by injecting records, overriding command rules or adding the rejected child tool
 
 ## Evidence and meaning of the results
 
-The reference inventory was captured earlier on the same day from installed
+The reference inventory was captured on 10 September from installed
 `Microsoft.PowerApps.PowerAppsOneGrid` **1.0.356**: 45 direct properties, 26 non-hidden
 and 19 hidden, plus Items/ChildItems datasets. DrivenGrid now has 39 direct inputs
 and one records dataset. Property counts are **not a parity percentage**.
@@ -52,7 +62,8 @@ and one records dataset. Property counts are **not a parity percentage**.
 - **Earlier paired live**: same sandbox demo parent/two children and nine columns;
   native and DrivenGrid expansion, selection, command availability, exact-child Edit,
   child numeric filter and explicit sort matched. Diagnostic form-onload suppression
-  was used; normal business-handler acceptance is still required.
+  was used in that historical comparison. The 14 September DrivenGrid QA run used
+  normal handlers, but it was not a repeat of every native paired comparison.
 - **Earlier native-only live**: all 101 isolated QA options in a flat main grid;
   full menu inventory, Select All, groups and sums. Active 96 / Inactive 5; sums
   2,198.08 / 230.00 / 2,428.08 independently matched a scoped Dataverse aggregate.
@@ -64,6 +75,10 @@ and one records dataset. Property counts are **not a parity percentage**.
   This did not install the candidate or exercise each condition through the live UI.
 - **Open** means no adequate acceptance evidence, not automatically a defect.
   **Host** means supplied by Dynamics around the PCF, not implemented by this grid.
+- **14 September sandbox follow-up**: versioned live filters/actions, final 1.0.117
+  smoke, verified unmanaged exports and zero business-field differences across
+  106 restored fixtures. Current detailed evidence is linked at the top; older
+  local-only statements below are historical unless explicitly updated.
 
 Historical evidence remains in the CrmPackage workspace under
 `outputs/qa/drivengrid-one-to-one-20260910/`; current source baseline and read-only
@@ -272,7 +287,7 @@ remain on the actual command surface, evaluated for the actual selected records.
 | R07 | Offline/mobile | No custom offline contract or full mobile acceptance established. |
 | R08 | Maintenance | Custom Fluent/React/PCF code must be maintained separately from Microsoft's control. |
 | R09 | Documentation | Corrected stale virtualization, loaded-only selection and filter coverage statements. |
-| R10 | Deployment/rollback | Candidate not installed. Fresh exact rollback, locks, unmanaged assertion, publish/readback and live smoke required. |
+| R10 | Deployment/rollback | 1.0.117 installed/verified in sandbox on 14 September with exact rollback, locks, unmanaged assertion, published-asset readback, live smoke and final exports. Production remains out of scope. |
 
 ## Every installed native configuration declaration accounted for
 
@@ -353,9 +368,9 @@ details and remaining acceptance boundaries: [fix validation](VALIDATION-FIXES-2
   (including 118 blanks), zero data-row DOM nodes and zero child requests.
   Clearing grouping rendered 30 row nodes, not 2,000. This is a local rendering
   observation, not a Dataverse throughput measurement.
-- No sandbox deployment, form/view/ribbon change or business-data write. Candidate
-  dialog/commands/permissions still require signed-in acceptance after a gated,
-  unmanaged sandbox deployment. The installed sandbox release remains 1.0.110.
+- At the end of that 1.0.112 batch there was no sandbox deployment, form/view/ribbon
+  change or business-data write; the installed release then was 1.0.110. This
+  historical statement is superseded by the 14 September results at the top.
 - Release build/package identity for this follow-up is recorded in
   [the Excel-preserving validation record](VALIDATION-EXCEL-2026-09-10.md).
 

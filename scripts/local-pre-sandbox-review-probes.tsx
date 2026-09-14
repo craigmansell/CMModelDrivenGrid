@@ -177,6 +177,7 @@ export async function runPreSandboxReviewProbes(harness: {
         controller.context = {mode: {isControlDisabled: false}, parameters: {EnableInlineEdit: {raw: true}, records: {
             getTargetEntityType: () => 'account', columns: [column], refresh: () => undefined,
         }}, webAPI: {updateRecord: async () => {writes++;}}, navigation: {openAlertDialog: async () => undefined}} as unknown as Context;
+        Object.assign(controller, {columnEditabilityEntity:'account', columnEditability:{lookup:true}});
         const access = controller as unknown as {getEntityMeta: () => Promise<{entitySetName: string}>; resolveLookupBindNames: () => Promise<string[]>};
         access.getEntityMeta = async () => ({entitySetName: 'contacts'});
         access.resolveLookupBindNames = async () => {column.isReadOnly = true; return ['lookup'];};
@@ -193,6 +194,7 @@ export async function runPreSandboxReviewProbes(harness: {
                 let writes=0;
                 controller.context={mode:{isControlDisabled:false},parameters:{EnableInlineEdit:{raw:true},records:dataset},
                     webAPI:{updateRecord:async()=>{writes++;if(change==='retry'){column.isReadOnly=true;throw new Error("An undeclared property 'lookup' was found in the payload.");}}},navigation:{openAlertDialog:async()=>undefined}} as unknown as Context;
+                Object.assign(controller, {columnEditabilityEntity:'account', columnEditability:{lookup:true}});
                 const access=controller as unknown as {getEntityMeta:()=>Promise<{entitySetName:string}>;resolveLookupBindNames:()=>Promise<string[]>};
                 access.getEntityMeta=async()=>({entitySetName:'contacts'});
                 access.resolveLookupBindNames=async()=>{

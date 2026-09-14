@@ -1,5 +1,42 @@
 # CMModelDrivenGridSolution changelog
 
+## Sandbox release 1.0.96.0 / control 1.0.117 — 2026-09-14
+
+- Published and verified the exact locally tested unmanaged package in Capricorn sandbox. Full local suite, focused test TypeScript and Release build pass (three existing bundle-size warnings). Published assets match; all Item Template forms, option views and publisher remain unchanged. No production/schema/ribbon/security changes.
+- Final fresh-tab acceptance: initial paging; 33-root/64-child Select All; scope switching/collapse; exact-child native Edit; locked system-managed dates; reversible parent save. The failing selection-to-totals path now completes with sum 799.36, Active 30/sum 679.36 and Inactive 3/sum 120. Six final-version filter spot-checks match exact reference IDs, following the 174/174 full live matrix on 1.0.114.
+- All 106 original QA fixtures restored with zero changed business fields. One new explicitly disposable child was deleted through the native command bar and its absence verified; historical deletion preserved. Excel keyboard ranges pass live, but clipboard readback remains a manual check because the test browser's virtual clipboard blocked that workflow. No all-native-feature or production sign-off.
+- Reuse the exact PCF-only batch rollback under the unchanged freshness/scope locks. Final input ZIP SHA-256 `2425AC6F4AD302469CDB3F13C987678F89F62983BD55F3F4BFF5733745B30058`. Detailed versioned results, package evidence and remaining boundaries: `SANDBOX-VALIDATION-2026-09-14.md`. Nine upstream development-tool audit entries remain; shipped-dependency audit is clean.
+
+## Sandbox dataset-snapshot paging fix candidate 1.0.96.0 / control 1.0.117 — 2026-09-14
+
+- A fresh sandbox page on 1.0.116 exposed the immutable-host variant: Power Apps replaces the dataset/context object during updateView, leaving the object which issued the page request stale. Read the delivered dataset after awaiting each page, not the issuing snapshot. A regression failed with the same repeated-page error before this fix and passes afterwards; the existing mutable-host, 10,000-row, duplicate-page and selection-handover checks remain.
+- Reuse the verified PCF-only rollback baseline and unchanged component boundaries. Final signed-in checks passed as recorded in the release entry above; 1.0.116 is superseded and not accepted for use.
+
+## Sandbox retained-row paging fix candidate 1.0.95.0 / control 1.0.116 — 2026-09-14
+
+- The final selection/totals sequence exposed a second paging case: switching native command selection restarts physical host paging but deliberately retains visible roots. A page containing only retained rows was mistaken for an empty page, preventing complete totals/grouping. A regression reproduced the failure (one catch-up request instead of two). Consume overlapping physical pages under one promise until a new root or EOF, retaining existing rows, with repeat-page and 500-page safeguards. Yield to pending selection and do not display a false empty-page error while that query is taking over.
+- Version 1.0.115 is published. A genuinely fresh tab confirmed system-managed date fields locked for both levels and normal cost editing available; an already-open tab reused earlier scripts after reload and was excluded from that acceptance check. Root Select All selected all 33 records; child Select All selected all 64 across pages, switching scope deselected parents, and collapse cleared child selection. The native command bar successfully deleted only the newly-created, marked disposable child; deletion verified by exact ID and marker.
+
+## Sandbox read-only fix candidate 1.0.94.0 / control 1.0.115 — 2026-09-14
+
+- Live testing found that system-managed Created On / Record Created On fields could open editors because dataset columns did not supply the optional read-only flags. Read bounded public Dataverse attribute metadata once per table/column set, propagate read-only flags to parent and child grids, and enforce the same check immediately before saving. Unknown, failed, missing, calculated, rollup and derived attributes fail closed; a failed metadata load can be retried with the subgrid Refresh command. This is column eligibility, not a replacement for server record/field security or custom form business rules.
+- Add metadata, batch-size, pending/failure, previous-table and guarded-save regression checks; retain the existing late read-only lookup tests with explicitly confirmed editable fixture metadata.
+- Version 1.0.114 is published in sandbox: all 174 live filter cases (87 root/87 child) match independent Dataverse references; child paging 50+14, nested G01/G02, shared native Edit targeting and reversible child cost/lookup/state actions passed. The final 1.0.115 validation and record-restoration audit are pending.
+
+## Sandbox paging fix candidate 1.0.93.0 / control 1.0.114 — 2026-09-14
+
+- Live 1.0.113 testing found that a new page could render before the host paging promise settled. Prefetch then reused that promise as a new request, leaving a false "No additional records" warning even after all 33 QA roots arrived.
+- Added a regression which fails on 1.0.113, then a separate promise-lifetime guard which prevents overlapping prefetch and re-arms scrolling after completion. Preserve genuine empty-page Retry recovery and all Excel/hierarchy features. The focused grid regression suite passes; full validation and deployment evidence will be recorded below before acceptance.
+- Owner resumed sandbox publication. The fresh check already found 1.0.113 published, so no additional Publish All action was needed. Its three resources match the exact tested 1.0.92.0 package and forms/views/publisher remain unchanged. That version's live test is not final acceptance because of the paging defect.
+
+## Sandbox 1.0.92.0 import — publication approval required — 2026-09-14
+
+- Re-ran the full local suite successfully, including all 16 review regressions, the 42,000-record fixture and strict-host paging. Exact candidate ZIP remains `948FADDD33A48623DC8AF3764AA9415EFECE60ACBBF79AFAAC8C39A69DBDE69E`; no product-source or version changes.
+- Verified sandbox organization, installed 1.0.110 / 1.0.89.0, publisher and existing hierarchy bindings. Created and verified fresh PCF and full-release unmanaged rollback exports at CrmPackage `outputs/deployment-backups/drivengrid-v113-sandbox-20260914-095030/`. Published/draft Item Template forms and option views matched and the audited unpublished UI inventory was clear before import.
+- Imported the exact unmanaged 1.0.92.0 package successfully (100% at 08:54:18 UTC). Targeted resource publication installed the tested bundle hash, but the published control definition is still 1.0.110. The attempted audited Publish All action was rejected by the safety reviewer before execution because broader publication requires explicit owner approval. Do not describe this mixed publication state as a completed deployment or approved for use.
+- Added locked prepare/apply/publish/verify/export and read-only QA helpers. Snapshot captured all 106 remaining disposable fixtures, preserving the historical C65 deletion. All 174 independent filter-reference queries were accepted after correcting a reserved-variable issue in the new QA generator; these are server reference results, not PCF UI passes. No fixture values, forms, views, schema, security or production data were changed.
+- Full live UI/action tests and final export are paused until publication is explicitly authorized and completed. Current status and resumption instructions: `SANDBOX-VALIDATION-2026-09-14.md`. The old deployment baseline must not be reused if it is stale or component scope changes.
+
 ## Unreleased candidate 1.0.92.0 / control 1.0.113 — fix pre-sandbox review gates — 2026-09-10
 
 - Fix synchronous ordinary dataset filter/sort rejection: snapshot and restore nested physical/logical filters and sort priorities; release local loading even when records are unchanged or the same error occurs twice. If restoring the host query also fails, block row selection/Select All until recovery; a successful refresh follows the accepted host filter and a new view does not inherit the old recovery state.

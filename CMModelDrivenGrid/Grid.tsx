@@ -823,6 +823,11 @@ export const Grid = React.memo((props: GridProps) => {
 	const [infiniteScrollError, setInfiniteScrollError] = React.useState<string | null>(null);
 	const [pagingInProgress, setPagingInProgress] = React.useState(false);
 	const pageRequestSerial = React.useRef(0);
+	// PCF can render the new page before loadNextPage's promise/finally settles.
+	// Keep this separate from the rendered-row identity to prevent reusing the
+	// controller's still-active promise as if it were a request for another page.
+	const pagePromisePendingRef = React.useRef(false);
+	const [pagePromisePending, setPagePromisePending] = React.useState(false);
 	React.useEffect(() => () => { pageRequestSerial.current++; }, []);
 
 	// Multi-cell editing state — each key is `${recordId}-${columnName}`.
@@ -1198,6 +1203,8 @@ export const Grid = React.memo((props: GridProps) => {
 	}, [displayItems, hasNextPage]);
 	const latestInfiniteIdentity = React.useRef(infiniteLoadIdentity);
 	latestInfiniteIdentity.current = infiniteLoadIdentity;
+	const latestPagingBusy = React.useRef(itemsLoading || isComponentLoading);
+	latestPagingBusy.current = itemsLoading || isComponentLoading;
 	React.useLayoutEffect(() => {
 		if (!props.selectedRecordIds || props.selectionActive === false) return;
 		selectionIds.current = props.selectedRecordIds;
@@ -1218,14 +1225,14 @@ export const Grid = React.memo((props: GridProps) => {
 		prevItemsLoadingRef.current = itemsLoading;
 		if (wasLoading && !itemsLoading) {
 			setIsLoading(false);
-			setPagingInProgress(false);
+			if (!pagePromisePendingRef.current) setPagingInProgress(false);
 		}
 	}, [itemsLoading]);
 
 	// Also clear local loading when records change (belt-and-braces for the fast-path case
 	// where PCF never sets dataset.loading=true because it responds before the next render).
 	React.useEffect(() => {
-		if (itemsLoading) return;
+		if (itemsLoading || pagePromisePendingRef.current) return;
 		setIsLoading(false);
 		setPagingInProgress(false);
 		if (!itemsLoading && isLoadingNextPageRef.current && lastInfiniteLoadIdentityRef.current === infiniteLoadIdentity) {
@@ -1240,7 +1247,7 @@ export const Grid = React.memo((props: GridProps) => {
 	// settled; the identity guard below still prevents an automatic retry for
 	// the same dataset state, while the footer Retry action can recover it.
 	React.useEffect(() => {
-		if (!itemsLoading && !isComponentLoading) {
+		if (!itemsLoading && !isComponentLoading && !pagePromisePendingRef.current) {
 			if (isLoadingNextPageRef.current && hasNextPage && lastInfiniteLoadIdentityRef.current === infiniteLoadIdentity) {
 				setInfiniteScrollError("No additional records were returned. Try again.");
 			}
@@ -1255,12 +1262,13 @@ export const Grid = React.memo((props: GridProps) => {
 		if (observedInfiniteLoadIdentityRef.current === infiniteLoadIdentity) return;
 		observedInfiniteLoadIdentityRef.current = infiniteLoadIdentity;
 		lastInfiniteLoadIdentityRef.current = null;
-		isLoadingNextPageRef.current = false;
+		if (!pagePromisePendingRef.current) isLoadingNextPageRef.current = false;
 		setInfiniteScrollError(null);
 	}, [infiniteLoadIdentity]);
 
 	const requestNextPage = React.useCallback((force = false) => {
 		if (!infiniteScroll || !hasNextPage || itemsLoading || isComponentLoading || bulkRequest.current) return;
+		if (pagePromisePending || pagePromisePendingRef.current) return;
 		if (infiniteScrollError && !force) return;
 		// A manual Retry is allowed to recover even if the host left the local
 		// guard set after a failed/silent page request. Automatic observer
@@ -1277,8 +1285,12 @@ export const Grid = React.memo((props: GridProps) => {
 		setInfiniteScrollError(null);
 		setPagingInProgress(true);
 		const serial = ++pageRequestSerial.current;
+		pagePromisePendingRef.current = true;
+		setPagePromisePending(true);
 		const handleLoadError = () => {
 			if (serial !== pageRequestSerial.current) return;
+			pagePromisePendingRef.current = false;
+			setPagePromisePending(false);
 			lastInfiniteLoadIdentityRef.current = null;
 			isLoadingNextPageRef.current = false;
 			setIsLoading(false);
@@ -1291,16 +1303,23 @@ export const Grid = React.memo((props: GridProps) => {
 			if (result && typeof (result as { then?: unknown }).then === "function") {
 				void Promise.resolve(result as PromiseLike<unknown>).then(() => {
 					if (serial !== pageRequestSerial.current) return;
+					pagePromisePendingRef.current = false;
 					isLoadingNextPageRef.current = false;
 					setPagingInProgress(false);
-					if (latestInfiniteIdentity.current === infiniteLoadIdentity) setInfiniteScrollError("No additional records were returned. Try again.");
+					if (latestPagingBusy.current) lastInfiniteLoadIdentityRef.current = null;
+					else if (latestInfiniteIdentity.current === infiniteLoadIdentity) setInfiniteScrollError("No additional records were returned. Try again.");
+					// Re-arm prefetch only after the host promise has fully settled.
+					setPagePromisePending(false);
 					return undefined;
 				}, handleLoadError);
+			} else {
+				pagePromisePendingRef.current = false;
+				setPagePromisePending(false);
 			}
 		} catch {
 			handleLoadError();
 		}
-	}, [hasNextPage, infiniteLoadIdentity, infiniteScroll, infiniteScrollError, isComponentLoading, itemsLoading, loadNextPage]);
+	}, [hasNextPage, infiniteLoadIdentity, infiniteScroll, infiniteScrollError, isComponentLoading, itemsLoading, loadNextPage, pagePromisePending]);
 	React.useEffect(() => {
 		if (!keyboardTarget) return;
 		if (keyboardTarget.query !== selectionQuery || keyboardTarget.layout !== rangeLayoutKey || features.enableRangeSelection === false || infiniteScrollError) {setKeyboardTarget(undefined); return;}

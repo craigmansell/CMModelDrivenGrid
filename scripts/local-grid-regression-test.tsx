@@ -321,6 +321,40 @@ async function testInfiniteScrollEmptyPageRetry(): Promise<void> {
 	assert(Array.from(container.querySelectorAll("button")).some((button) => button.textContent?.trim() === "Retry"), "An empty page must leave a recovery action.");
 }
 
+async function testInfiniteScrollWaitsForPagePromise(): Promise<void> {
+	let loadCalls = 0;
+	let completePage!: () => void;
+	const page = new Promise<void>(resolve => { completePage = resolve; });
+	const records = { a: makeRecord('a', {}, {}), b: makeRecord('b', {}, {}) };
+	await act(async () => {
+		renderGrid({ infiniteScroll: true, hasNextPage: true, records: { a: records.a }, sortedRecordIds: ['a'],
+			loadNextPage: () => { loadCalls++; return page; },
+		});
+	});
+	await act(async () => { intersectionCallback?.([{ isIntersecting: true } as IntersectionObserverEntry]); });
+	assert(loadCalls === 1, 'The first page should be requested once.');
+	// Dataverse renders the new payload before the paging promise and its
+	// controller-side finally handlers have settled.
+	await act(async () => { updateGrid({ records, sortedRecordIds: ['a', 'b'] }); });
+	await act(async () => { intersectionCallback?.([{ isIntersecting: true } as IntersectionObserverEntry]); });
+	assert(loadCalls === 1, 'New rows must not release a still-pending page promise and request the same host page again.');
+	assert(!container.textContent?.includes('No additional records'), 'A successful pending page must not report an empty-page error.');
+	await act(async () => { updateGrid({ hasNextPage: false }); completePage(); await page; });
+	assert(!container.textContent?.includes('No additional records'), 'Late completion of the final page must not leave a spurious Retry warning.');
+	assert(!container.querySelector('.cm-grid-loading-overlay'), 'The completed final page must release loading.');
+}
+
+async function testPagingYieldToSelection(): Promise<void> {
+	let finish!: () => void;
+	const page = new Promise<void>(resolve => {finish=resolve;});
+	await act(async()=>{renderGrid({infiniteScroll:true,hasNextPage:true,records:{a:makeRecord('a',{}, {})},sortedRecordIds:['a'],loadNextPage:()=>page});});
+	await act(async()=>{intersectionCallback?.([{isIntersecting:true} as IntersectionObserverEntry]);});
+	await act(async()=>{updateGrid({itemsLoading:true,commandStatus:'Preparing record commands…'});finish();await page;});
+	assert(!container.textContent?.includes('No additional records'),'Yielding an overlapping page to native selection must not report an empty-page error.');
+	await act(async()=>{updateGrid({itemsLoading:false,commandStatus:undefined,hasNextPage:false});});
+	assert(!container.textContent?.includes('No additional records'),'Selection completion must leave paging ready without a false Retry.');
+}
+
 async function testUnsupportedEditAndUntouchedDropdown(): Promise<void> {
 	const unsupportedColumn: ComponentFramework.PropertyHelper.DataSetApi.Column = {
 		name: "photo", displayName: "Photo", dataType: "Image", alias: "photo", order: 0, visualSizeFactor: 100, isHidden: false,
@@ -505,6 +539,8 @@ async function run(): Promise<void> {
 	await testColumnFillOnResize();
 	await testInfiniteScrollDistanceFallback();
 	await testInfiniteScrollEmptyPageRetry();
+	await testInfiniteScrollWaitsForPagePromise();
+	await testPagingYieldToSelection();
 	await testUnsupportedEditAndUntouchedDropdown();
 	await testClipboardFocusGuard();
 	await testPagedNextButton();

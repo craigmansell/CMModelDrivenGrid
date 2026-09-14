@@ -9,6 +9,7 @@ import { FilterExpression, FilterMode, FilterValue, updateColumnFilter } from ".
 import { needsServerFilter, supportedFilterSuperset, collectFilterCandidates, resolveFilterIds, filterForIds } from './datasetFiltering';
 import { NativeHierarchySelection, isHierarchyRoot } from "./nativeHierarchy";
 import { MAX_SELECTED_RECORDS, SelectAllRequest, SelectAllResult, selectionResult, checkSelectionCancelled } from './recordSelection';
+import { readColumnEditability } from './columnEditability';
 
 interface LookupFilterConfig {
 	default?: string;
@@ -61,6 +62,11 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 	currentPage = 1;
 	columnOptions: Record<string, { label: string; value: string; color?: string }[]> = {};
 	private columnOptionsFetchedFor: string | undefined;
+	private columnEditability: Record<string, boolean> = {};
+	private columnEditabilityEntity = '';
+	private columnEditabilityKey = '';
+	private columnEditabilityRevision = 0;
+	private columnEditabilityError = '';
 	private entityMetaCache: Record<string, EntityMetadata> = {};
 	// Maps source-entity column logical name → Dataverse navigation property name.
 	// Populated eagerly from full entity metadata at updateView time.
@@ -844,7 +850,22 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		}
 		const flags = column as typeof column & { isReadOnly?: boolean; readOnly?: boolean; disableEditing?: boolean };
 		if (flags.isReadOnly || flags.readOnly || flags.disableEditing) throw new Error('This column is read only.');
+		if (this.columnEditabilityEntity !== this.context.parameters.records.getTargetEntityType() || this.columnEditability[column.name.toLowerCase()] !== true) {
+			throw new Error('This column is read only or its update permissions have not been confirmed.');
+		}
 		return column;
+	};
+
+	private fetchColumnEditability = async (entity: string, columns: string[], revision: number): Promise<void> => {
+		try {
+			const result = await readColumnEditability(entity, columns, window.location.origin);
+			if (this.isDestroyed || this.columnEditabilityRevision !== revision) return;
+			this.columnEditability = result;
+		} catch {
+			if (this.isDestroyed || this.columnEditabilityRevision !== revision) return;
+			this.columnEditabilityError = 'Inline editing is unavailable because column metadata could not be loaded. Use the subgrid Refresh command to try again.';
+		}
+		this.renderGrid();
 	};
 
 	/** Recheck at save time: the host can disable an already-open editor. */
@@ -1105,9 +1126,30 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 	loadNextPage = (): Promise<void> => {
 		if (this.nextPageRequest) return this.nextPageRequest;
 		const previousPage = this.currentPage;
-		this.currentPage++;
+		const native = this.nativeHierarchy;
+		const knownRoots = new Set(this.sortedRecordsIds.map(id => this.normalizeGuid(this.records?.[id]?.getRecordId?.() ?? id).toLowerCase()));
 		this.appendingPage = true;
-		const request = this.loadDatasetPageAndWait(() => this.context.parameters.records.paging.loadNextPage()).catch((error: unknown) => {
+		const request = (async () => {
+			// A native selection query can restart physical paging without discarding
+			// the visible root cache. Skip overlapping pages until we add a root or
+			// reach EOF; a single duplicate cache page is not an empty server page.
+			for (let pages = 0; pages < 500; pages++) {
+				const dataset = this.context.parameters.records;
+				const before = dataset.sortedRecordIds.join('|');
+				this.currentPage++;
+				await this.loadDatasetPageAndWait(() => dataset.paging.loadNextPage());
+				// Model-driven hosts can replace the dataset object in updateView.
+				// The issuing snapshot is not the page which has just completed.
+				const delivered = this.context.parameters.records;
+				if (!native || this.nativeHierarchy !== native || native.busy || !delivered.paging.hasNextPage) return;
+				if (delivered.sortedRecordIds.some(id => {
+					const row = delivered.records[id];
+					return row && isHierarchyRoot(row, native.parentField) && !knownRoots.has(this.normalizeGuid(row.getRecordId()).toLowerCase());
+				})) return;
+				if (before === delivered.sortedRecordIds.join('|')) throw new Error('Power Apps returned the same page while catching up retained rows.');
+			}
+			throw new Error('Unable to catch up the retained grid pages. Refresh the subgrid.');
+		})().catch((error: unknown) => {
 			this.currentPage = previousPage;
 			throw error;
 		}).finally(() => { if (this.nextPageRequest === request) this.nextPageRequest = undefined; this.appendingPage = false; });
@@ -1550,14 +1592,16 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 				selectionCountOverride: native?.selectedCount,
 				selectionResetVersion: this.nativeSelectionReset,
 				commandStatus: this.rootFilterBusy ? 'Checking filters across all grid pages…' : this.nativeHierarchyInitializing || native?.busy ? 'Preparing record commands…' : undefined,
-				commandError: this.rootFilterError || this.nativeSelectionError || undefined,
+				commandError: this.rootFilterError || this.nativeSelectionError || this.columnEditabilityError || undefined,
 				queryErrorVersion: this.queryErrorVersion,
 				disableSelection: this.rootFilterRecoveryRequired,
 				childRows: this.context.parameters.EnableChildRows?.raw ? {loadPage:this.loadChildPage,hasChildren:this.checkChildRows,revision:this.childRevision,
 					readOnly:!!this.context.parameters.DisableChildEditing?.raw || this.context.mode.isControlDisabled} : undefined,
 				width: allocatedWidth,
 				height: allocatedHeight,
-				columns: native ? dataset.columns.filter(column => column.name !== native.parentField) : dataset.columns,
+				columns: (native ? dataset.columns.filter(column => column.name !== native.parentField) : dataset.columns).map(column => ({...column,
+					isReadOnly: (column as typeof column & {isReadOnly?: boolean}).isReadOnly === true ||
+						this.columnEditabilityEntity !== dataset.getTargetEntityType() || this.columnEditability[column.name.toLowerCase()] !== true})),
 				records: waitingForNative ? {} : this.records ?? {},
 				sortedRecordIds: waitingForNative ? [] : this.sortedRecordsIds ?? [],
 				hasNextPage: paging.hasNextPage,
@@ -1746,6 +1790,14 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		// Kick off a one-time metadata fetch for OptionSet columns whenever the
 		// entity type changes (e.g. on first load or navigation to a different table).
 		const entityType = dataset.getTargetEntityType?.();
+		const editabilityKey = `${entityType ?? ''}|${dataset.columns.map(column => column.name).sort().join(',')}`;
+		if (entityType && (this.columnEditabilityKey !== editabilityKey || (completedExternalRefresh && this.columnEditabilityError))) {
+			this.columnEditabilityKey = editabilityKey;
+			this.columnEditabilityEntity = entityType;
+			this.columnEditability = {};
+			this.columnEditabilityError = '';
+			void this.fetchColumnEditability(entityType, dataset.columns.map(column => column.name), ++this.columnEditabilityRevision);
+		}
 		if (entityType && entityType !== this.columnOptionsFetchedFor) {
 			this.columnOptionsFetchedFor = entityType;
 			void this.fetchColumnOptions(entityType, dataset.columns);

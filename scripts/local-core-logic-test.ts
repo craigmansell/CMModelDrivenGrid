@@ -483,6 +483,7 @@ async function testLookupWriteSafety(): Promise<void> {
 	const targetId='00000000-0000-4000-8000-000000000002';
 	const create = (fail: (attempt: number) => void) => {
 		const grid=new CMModelDrivenGrid();
+		Object.assign(grid, {columnEditabilityEntity:'account', columnEditability:{lookup:true}});
 		let writes=0;
 		grid.context={mode:{isControlDisabled:false},parameters:{EnableInlineEdit:{raw:true},records:{getTargetEntityType:()=> 'account',columns:[{name:'lookup',dataType:'Lookup.Simple'}],refresh:()=>undefined}},webAPI:{updateRecord:async()=>{writes++;fail(writes);}},navigation:{openAlertDialog:async()=>undefined}} as unknown as TestContext;
 		const testable=grid as unknown as {resolveLookupBindNames:()=>Promise<string[]>;getEntityMeta:()=>Promise<{entitySetName:string}>;childRecords:Record<string,unknown>};
@@ -517,6 +518,7 @@ async function testLookupDialogSafety(): Promise<void> {
 	const targetId = '00000000-0000-4000-8000-000000000002';
 	const create = () => {
 		const grid = new CMModelDrivenGrid();
+		Object.assign(grid, {columnEditabilityEntity:'account', columnEditability:{lookup:true}});
 		const seen = {dialogs:0,queries:[] as string[],writes:0};
 		grid.context = {mode:{isControlDisabled:false},parameters:{EnableInlineEdit:{raw:true}, LookupFilterConfig:{raw:JSON.stringify({byColumn:{lookup:'statecode eq 0'}})},records:{getViewId:()=> 'view-1',getTargetEntityType:()=> 'account',columns:[{name:'lookup',dataType:'Lookup.Simple'}]}},
 			utils:{getEntityMetadata:async()=>({EntitySetName:'cm_tags',PrimaryIdAttribute:'cm_tagid',PrimaryNameAttribute:'name',Attributes:{getAll:()=>[]}}),lookupObjects:async(options:ComponentFramework.UtilityApi.LookupOptions)=>{seen.dialogs++;assert(options.allowMultiSelect === false && options.entityTypes.join() === 'cm_tag','Picker must be single-select for the correct table.');return [{id:`{${targetId}}`,entityType:'cm_tag',name:'From dialog'}];}},

@@ -6,9 +6,13 @@ sample and now adds editable cells, lookup links and lookup search, richer filte
 multi-cell copy, record highlighting, configurable paging, and optional infinite
 scrolling.
 
-**Candidate 1.0.113 / unmanaged solution 1.0.92.0 is not deployed.** The last verified
-sandbox release is 1.0.110 / 1.0.89.0. See the [full updated feature comparison](FULL-FEATURE-COMPARISON-2026-09-10.md)
-for local checks, earlier live evidence and remaining native-grid differences.
+**Sandbox release verified on 14 September:** control **1.0.117**, unmanaged solution
+**1.0.96.0**. Ready for sandbox user acceptance, not production sign-off or complete
+Microsoft grid parity. The batch passed 174 live filter comparisons, final-version
+paging/selection/totals/editing smoke checks and a 106-fixture restoration audit.
+Live clipboard readback still needs a manual check; the test browser's virtual
+clipboard could not verify it. See [test results and QA link](SANDBOX-VALIDATION-2026-09-14.md)
+and [remaining native-grid differences](FULL-FEATURE-COMPARISON-2026-09-10.md).
 The three pre-sandbox review defects are fixed and their regressions now run in the
 normal suite: [fix validation and exact package identity](VALIDATION-FIXES-2026-09-10.md).
 
@@ -31,6 +35,9 @@ normal suite: [fix validation and exact package identity](VALIDATION-FIXES-2026-
 Inline editing uses the Dataverse Web API and still respects the current user's table
 and column privileges. Related-table/aliased columns, unsupported data types, and
 lookup columns whose target table cannot be resolved remain read-only.
+Attribute metadata must confirm that a column is updateable; system-managed,
+calculated/rollup/derived or unconfirmed columns stay locked at both grid levels.
+Custom form business rules and record-specific server security remain separate.
 
 The filter value picker lists values from records already loaded into the grid;
 it is not a server-wide list of distinct values. Labels are displayed to the user,
