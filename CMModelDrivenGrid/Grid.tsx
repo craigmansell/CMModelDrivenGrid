@@ -1829,6 +1829,7 @@ export const Grid = React.memo((props: GridProps) => {
 				calculatedWidth: colW,
 				currentWidth: colW,
 				className: getFilterKind(col.dataType) === "number" ? "cm-grid-number-cell" : undefined,
+				headerClassName: getFilterKind(col.dataType) === "number" ? "cm-grid-number-header" : undefined,
 				styles: {
 					cellTitle: { justifyContent: "flex-start", textAlign: "left" },
 					cellName: { justifyContent: "flex-start", textAlign: "left" },

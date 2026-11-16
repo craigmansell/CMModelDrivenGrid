@@ -1,5 +1,14 @@
 # CMModelDrivenGridSolution changelog
 
+## Sandbox Power Apps grid styling 1.0.101.0 / control 1.0.122 — 2026-11-16
+
+- Match the observed native sandbox grid: white header, underlined darker-blue links, lighter row separators, blue selection, adjacent dropdown chevrons and right-aligned numeric headings. Use a single rounded outer frame and a 42-pixel combined header/row rhythm.
+- Keep hierarchy arrows and their gutter, full-width header hit targets, same-header open/close, dropdown contents, sorting/filtering, column sizing, editing, native commands, infinite scrolling and full-tab sizing. The only Grid TypeScript change adds a numeric-header CSS class; event handlers and data logic are unchanged.
+- The full local suite and authoritative Release build pass (three existing Webpack size recommendations). Browser checks confirm white header, exact native blue selection, 42-pixel header/rows, numeric headings, adjacent carets and same-header toggles from the full-width hit target. Exact unmanaged ZIP SHA-256: `5929CADECFF03A3BA4303ABDFB0BCAAF38190C64E6E6D5F38D2218E568586902`.
+- Fresh rollback was verified under CrmPackage `outputs/deployment-backups/drivengrid-power-apps-style-sandbox-20261116-154121/`, locking prior 1.0.121 / 1.0.100.0, all forms/views and the native full-tab QA configuration. Published the exact package; installed 1.0.122 / 1.0.101.0 and all three assets match. Targeted publication needed the guarded Publish All fallback after an empty unrelated-pending audit. All forms, views and publisher settings remain unchanged.
+- Nine signed-in browser checks pass: parent/child header toggles, hierarchy expansion, automatic child paging 50 to 64, exact-child native Edit, inline Cancel, full-tab fit, native computed styles and hidden alphabet. Normal reload clears the prior cached style. Browser screenshot capture timed out; hashed AX/DOM evidence establishes functional acceptance without a sandbox pixel claim. A real local harness preview is saved separately. See `REVIEW-POWER-APPS-STYLE-2026-11-16.md`. No business-record or production writes.
+- Final unmanaged exports verified after runtime acceptance: PCF SHA-256 `DE493407E8BAC13674BE37AF679EE23926B069193D99406DF72AB0C8BB2C821D`; full CapricornRelease20260622 SHA-256 `D3C82A99FF1048F4501F99CAD36FBA3958ADE283B8F237ADC28DCC9DC79F50C2`. The release remains 1.0.0.6. Final forms, views, drafts, publisher and pending audit pass; all PCF assets match the tested package.
+
 ## Sandbox full-tab release 1.0.100.0 / control 1.0.121 — 2026-11-16
 
 - Browser-only sandbox testing of 1.0.120 found that the native full-tab subgrid host extended below the viewport by the command-bar height. Cap automatic content sizing using the component's own top edge and the visible viewport, without inspecting or changing Dynamics ancestors. Keep explicit allocated/fixed heights and offscreen embedded grids unchanged.
