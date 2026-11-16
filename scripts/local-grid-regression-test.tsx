@@ -185,6 +185,66 @@ function updateGrid(overrides: Partial<GridProps>): void {
 	ReactDOM.render(React.createElement(Grid, currentGridProps), container);
 }
 
+async function testResponsiveSizing(): Promise<void> {
+	const { ResponsiveGrid, resolveGridHeight } = require('../CMModelDrivenGrid/ResponsiveGrid') as typeof import('../CMModelDrivenGrid/ResponsiveGrid');
+	assert(resolveGridHeight(850, 520) === 850, 'A definite Power Apps allocation must win over the embedded pixel height.');
+	assert(resolveGridHeight(-1, 520, 850) === 520, 'An ordinary fixed-height subgrid must retain its configured fallback.');
+	assert(resolveGridHeight(-1, undefined, 240) === 240, 'Automatic sizing must fit even a short available tab area.');
+	assert(resolveGridHeight(Number.NaN, 0, Infinity) === -1, 'Unavailable or invalid sizes must retain CSS fill sizing.');
+	const oldObserver = globalThis.ResizeObserver;
+	const observers: SizingObserver[] = [];
+	class SizingObserver {
+		target?: Element;
+		disconnected = false;
+		constructor(private callback: ResizeObserverCallback) { observers.push(this); }
+		observe(target: Element): void { this.target = target; }
+		unobserve(): void { undefined; }
+		disconnect(): void { this.disconnected = true; }
+		resize(): void { this.callback([], this as unknown as ResizeObserver); }
+	}
+	Object.defineProperty(globalThis, 'ResizeObserver', { value: SizingObserver, configurable: true, writable: true });
+	const column = { name:'name', displayName:'Name', dataType:'SingleLine.Text', order:0, visualSizeFactor:180 } as ComponentFramework.PropertyHelper.DataSetApi.Column;
+	const record = makeRecord('parent', {name:'Parent'}, {name:'Parent'});
+	let selected: string[] = [], queryCalls = 0, writes = 0;
+	const props = createGridProps({width:undefined, height:undefined, columns:[column], records:{parent:record}, sortedRecordIds:['parent'],
+		setSelectedRecords: ids => { selected = ids; }, onSort: () => { queryCalls++; }, onFilter: () => { queryCalls++; },
+		onUpdateCell: async () => { writes++; }});
+	const render = (height?: number, fixedHeight?: number) => ReactDOM.render(<ResponsiveGrid {...props} height={height} fixedHeight={fixedHeight}/>, container);
+	try {
+		await act(async () => { ReactDOM.unmountComponentAtNode(container); render(); });
+		const host = container.querySelector<HTMLElement>('.cm-grid-host')!;
+		const observer = observers.find(item => item.target === host)!;
+		assert(!!observer, 'Automatic sizing must observe only the component-owned host.');
+		let availableHeight = 720;
+		Object.defineProperty(host, 'clientHeight', {get: () => availableHeight, configurable: true});
+		const grid = () => host.querySelector<HTMLElement>('.cm-model-driven-grid')!;
+		for (const height of [720, 900, 576, 240]) {
+			availableHeight = height;
+			await act(async () => { observer.resize(); await new Promise(resolve => setTimeout(resolve, 10)); });
+			assert(grid().style.height === `${height}px` && grid().style.minHeight === '', `The grid must fill ${height}px without retaining a 320px minimum or stale height.`);
+			assert(host.style.width === '100%' && grid().style.width === '100%', 'Full-tab sizing must also retain the available width.');
+		}
+		await act(async () => { (grid().querySelector('.ms-DetailsRow [role="checkbox"]') as HTMLElement).click(); });
+		assert(selected.join() === 'parent', 'The resize fixture must have a real selected record.');
+		availableHeight = 810;
+		await act(async () => { window.dispatchEvent(new Event('resize')); await new Promise(resolve => setTimeout(resolve, 10)); });
+		assert(grid().style.height === '810px' && selected.join() === 'parent', 'Window resizing must update the height while retaining selection.');
+		await act(async () => { render(850, 520); });
+		assert(host.style.height === '850px' && grid().style.height === '850px', 'Native allocated height must not be capped by the old fixed height.');
+		assert(observer.disconnected, 'A definite host allocation must release the automatic observer.');
+		await act(async () => { render(-1, 520); });
+		assert(grid().style.height === '520px' && selected.join() === 'parent', 'Embedded fixed-height mode must remain available without remounting the grid.');
+		assert(queryCalls === 0 && writes === 0, 'Sizing changes must never sort, filter or save records.');
+		await act(async () => { render(); });
+		const finalObserver = observers.filter(item => item.target === host).slice(-1)[0];
+		await act(async () => { finalObserver.resize(); ReactDOM.unmountComponentAtNode(container); await new Promise(resolve => setTimeout(resolve, 10)); });
+		assert(finalObserver.disconnected, 'Unmount must disconnect sizing observation and cancel queued work.');
+	} finally {
+		ReactDOM.unmountComponentAtNode(container);
+		Object.defineProperty(globalThis, 'ResizeObserver', {value:oldObserver, configurable:true, writable:true});
+	}
+}
+
 async function testColumnHeaderToggle(): Promise<void> {
 	const columns = [
 		{ name: 'name', displayName: 'Name', dataType: 'SingleLine.Text', order: 0, visualSizeFactor: 180 },
@@ -586,6 +646,8 @@ async function testInfiniteScrollIdentityGuard(): Promise<void> {
 }
 
 async function run(): Promise<void> {
+	console.log('Checking native/full-tab responsive sizing...');
+	await testResponsiveSizing();
 	console.log('Checking column-header open/close toggles...');
 	await testColumnHeaderToggle();
 	console.log('Checking grouping, complete totals and compact-list parity...');
@@ -996,7 +1058,7 @@ async function testLookupInteractionSafety(): Promise<void> {
 
 // The release gates now run in the normal suite; retain the focused entry point.
 const runReviewGates = () => (require('./local-pre-sandbox-review-probes') as typeof import('./local-pre-sandbox-review-probes')).runPreSandboxReviewProbes({container, resources, renderGrid, updateGrid, unmount: () => { ReactDOM.unmountComponentAtNode(container); }});
-const runSelectedSuite = process.argv.includes('--pre-sandbox-review')
+const runSelectedSuite = process.argv.includes('--layout') ? testResponsiveSizing : process.argv.includes('--pre-sandbox-review')
 	? runReviewGates
 	: run;
 runSelectedSuite()

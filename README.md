@@ -60,6 +60,19 @@ supported options and differences from the native Power Apps grid and Excel.
 
 ## Configuration
 
+### Fill a native form tab
+
+In the form designer, place this subgrid first in a one-column tab and enable
+**Expand first component to full tab** on that tab. Leave **Sub Grid Height** blank
+for automatic sizing. The grid follows its component-owned container as the tab
+or window changes size, and a positive height supplied by Power Apps takes
+precedence over the optional fixed-height fallback. Scrolling stays inside the grid.
+
+The setting fills the tab's available work area; Dynamics supplies the surrounding
+navigation and commands. No DOM outside the PCF's own container is read or changed.
+Try the local fixture at [full-tab preview](http://127.0.0.1:8183/?fulltab=1).
+Real form configuration and responsive acceptance still require a signed-in test.
+
 ### Excel-preserving additions (1.0.112)
 
 `EnableJumpBar` defaults to false; when enabled its All button removes only the

@@ -2,7 +2,7 @@ import { initializeIcons } from "@fluentui/react/lib/Icons";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { IInputs, IOutputs } from "./generated/ManifestTypes";
-import { HierarchyGrid as Grid } from "./HierarchyGrid";
+import { ResponsiveGrid as Grid } from "./ResponsiveGrid";
 import { createChildLoader, createChildAvailabilityLoader, ChildRowsConfig, ChildRequest, childGuid, childLogicalName } from "./childRecords";
 import { createDataverseChildPaging } from "./dataverseChildPaging";
 import { FilterExpression, FilterMode, FilterValue, updateColumnFilter } from "./filtering";
@@ -1551,9 +1551,6 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		if (!Number.isFinite(allocatedWidth) || allocatedWidth <= 0) {
 			allocatedWidth = -1;
 		}
-		if (this.context.parameters.SubGridHeight.raw) {
-			allocatedHeight = this.context.parameters.SubGridHeight.raw;
-		}
 		// Pass -1 when no valid height is available — Grid will use 100% to fill its container.
 		if (!Number.isFinite(allocatedHeight) || allocatedHeight <= 0) {
 			allocatedHeight = -1;
@@ -1599,6 +1596,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 					readOnly:!!this.context.parameters.DisableChildEditing?.raw || this.context.mode.isControlDisabled} : undefined,
 				width: allocatedWidth,
 				height: allocatedHeight,
+				fixedHeight: this.context.parameters.SubGridHeight.raw ?? undefined,
 				columns: (native ? dataset.columns.filter(column => column.name !== native.parentField) : dataset.columns).map(column => ({...column,
 					isReadOnly: (column as typeof column & {isReadOnly?: boolean}).isReadOnly === true ||
 						this.columnEditabilityEntity !== dataset.getTargetEntityType() || this.columnEditability[column.name.toLowerCase()] !== true})),

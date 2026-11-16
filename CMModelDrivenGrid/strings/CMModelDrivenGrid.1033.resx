@@ -258,11 +258,11 @@
     <comment/>
   </data>
   <data name="SubGridHeight_Disp" xml:space="preserve">
-    <value>Sub Grid Height (leave empty if not adding to form)</value>
+    <value>Sub Grid Height (blank for full tab)</value>
     <comment/>
   </data>
   <data name="SubGridHeight_Desc" xml:space="preserve">
-    <value>The height in pixels to render the grid when configured on a form subgrid.  Leave empty if not adding to form.</value>
+    <value>Optional fallback height in pixels for an embedded subgrid. Leave blank when using Expand first component to full tab. A positive height supplied by Power Apps takes precedence.</value>
     <comment/>
   </data>
   <data name="Label_NoRecords" xml:space="preserve">

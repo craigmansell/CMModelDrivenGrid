@@ -1,5 +1,14 @@
 # CMModelDrivenGridSolution changelog
 
+## Full-tab sizing candidate 1.0.99.0 / control 1.0.120 — 2026-11-16
+
+- Honour the native `Expand first component to full tab` layout contract: prefer a definite Power Apps height over the embedded `SubGridHeight` fallback. When no height is specified, measure and observe only a component-owned container so the grid follows the full tab's available height, including short work areas and window resizing. Retain the normal fixed-height fallback.
+- Keep the same hierarchy component mounted during resizing so selection and grid state are retained. Do not change menus, sorting, filters, infinite scrolling, child layout, record commands or data operations.
+- Clarify the fixed-height setting's maker label/help text and document the native tab setup. Add a full-tab local fixture at `http://127.0.0.1:8183/?fulltab=1`, using the same responsive component as the PCF.
+- Full local suite, Release PCF compilation (including TypeScript/ESLint) and unmanaged solution packaging pass. Layout regressions cover 720/900/576/240-pixel available heights, window resize, allocation precedence over a 520-pixel fallback, retained selection, cleanup and zero query/write callbacks. Three existing bundle-size recommendations remain (732 KiB).
+- Verified one PCF root, `Managed=0`, control 1.0.120 / solution 1.0.99.0; candidate ZIP SHA-256 `4052F841EDBCCAB59B5D9D3EFFE48D4AE87A7D345048135613088A54D9FA2588`. Kept the previous deployed ZIP intact. The loopback fixture serves the same responsive component used by the PCF.
+- The Computer Use connection is unavailable, so the actual native tab checkbox cannot yet be visually tested. This candidate is not deployed and no form configuration was changed. Read-only verification confirms sandbox remains at 1.0.119 / 1.0.98.0, with its earlier signed-in smoke check pending. See `REVIEW-FULL-TAB-2026-11-16.md` for validation and deployment requirements.
+
 ## Published sandbox candidate 1.0.98.0 / control 1.0.119 — 2026-11-16
 
 - Remove the preview's forced alphabet bar and let it use the control's existing hidden-by-default setting. Default the shared Grid component to infinite scrolling, matching the manifest and Dataverse host. The preview now exercises that default instead of explicitly supplying it; the optional alphabet bar and explicit paged mode remain configurable.

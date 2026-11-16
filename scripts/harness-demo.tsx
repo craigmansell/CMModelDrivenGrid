@@ -3,7 +3,7 @@ import * as ReactDOM from "react-dom";
 import { initializeIcons } from "@fluentui/react/lib/Icons";
 import { Dialog, DialogFooter } from '@fluentui/react/lib/Dialog';
 import { DefaultButton, PrimaryButton } from '@fluentui/react/lib/Button';
-import { HierarchyGrid as Grid } from "../CMModelDrivenGrid/HierarchyGrid";
+import { ResponsiveGrid as Grid } from "../CMModelDrivenGrid/ResponsiveGrid";
 import { ChildRequest } from "../CMModelDrivenGrid/childRecords";
 import { FilterExpression, updateColumnFilter } from "../CMModelDrivenGrid/filtering";
 import { DemoColumnKind, DemoFilterExpression, evaluateDemoFilter, getLocalDateOrdinal, sortDemoRows } from "./demo-filter-evaluator";
@@ -61,6 +61,7 @@ function record(row: Row): ComponentFramework.PropertyHelper.DataSetApi.EntityRe
     } as ComponentFramework.PropertyHelper.DataSetApi.EntityRecord;
 }
 function Demo(): React.ReactElement {
+	const fullTab = new URLSearchParams(window.location.search).get('fulltab') === '1';
     const [scenario, setScenario] = React.useState(() => demoScenario(new URLSearchParams(window.location.search).get('scenario')));
     const [rows, setRows] = React.useState(() => seedDemoRows(new Date(), scenario));
     const dataIndex = React.useMemo(() => indexDemoRows(rows), [rows]);
@@ -136,7 +137,7 @@ function Demo(): React.ReactElement {
     };
     return <>
         <header className="demo-header">Dynamics 365 style · DrivenGrid test harness</header>
-        <main className="demo-main">
+        <main className={`demo-main${fullTab ? ' demo-main-full-tab' : ''}`}>
             <div className="demo-title"><div><h1>Projects</h1><p className="demo-caption">{filteredRows.length} matching sample records · {visible.length} loaded</p></div>
                 <button className="demo-reset" onClick={() => resetScenario('standard')}>Reset sample data</button></div>
             <div className="demo-help"><p className="demo-dataset-summary" data-testid="demo-dataset-summary">{dataIndex.parents.length.toLocaleString('en-GB')} parents · {(rows.length - dataIndex.parents.length).toLocaleString('en-GB')} children · {rows.length.toLocaleString('en-GB')} total records</p>
