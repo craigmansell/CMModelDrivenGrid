@@ -161,11 +161,11 @@ function Demo(): React.ReactElement {
             {commandError && <div role="alert">{commandError}</div>}
             <div className="demo-grid"><Grid key={generation} columns={columns} records={records} sortedRecordIds={ids} selectionResetVersion={childRefresh}
                 layoutKey="local-demo:projects:v1"
-                features={{reflow:new URLSearchParams(window.location.search).get('layout') === 'list' ? 'list' : 'auto', showAvatar:true, showTypeIcons:true, showChoiceColors:true, enableJumpBar:true, locale:'en-GB', firstDayOfWeek:1}}
+                features={{reflow:new URLSearchParams(window.location.search).get('layout') === 'list' ? 'list' : 'auto', showAvatar:true, showTypeIcons:true, showChoiceColors:true, locale:'en-GB', firstDayOfWeek:1}}
                 childRows={{loadPage:loadChildren,hasChildren:checkChildren,revision:childRefresh,readOnly:childReadOnly}}
                 hasNextPage={limit < filteredRows.length} hasPreviousPage={false} totalResultCount={filteredRows.length} currentPage={1}
                 sorting={sorting} filtering={filter!} resources={resources} itemsLoading={loading}
-                highlightValue={null} highlightColor={null} enableLookupLinks={false} enableInlineEdit={true} infiniteScroll={true}
+                highlightValue={null} highlightColor={null} enableLookupLinks={false} enableInlineEdit={true}
                 columnOptions={{ status: statuses.map((label, value) => ({ label, value: String(value), color: ['#f3f2f1','#fff4ce','#dff6dd'][value] })) }} lookupTargetEntityMap={{ owner: "systemuser" }}
                 setSelectedRecords={setSelectedIds} onNavigate={item => setOpenRow(rows.find(row => row.id === item?.getRecordId()))} onOpenLookup={() => undefined}
                 onSelectAllRecords={options => {

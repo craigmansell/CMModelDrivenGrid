@@ -654,7 +654,7 @@ export const Grid = React.memo((props: GridProps) => {
 		onSearchLookup,
 		onBrowseLookup,
 		columnOptions,
-		infiniteScroll,
+		infiniteScroll = true,
 	} = props;
 	const theme = useTheme();
 	const forceUpdate = useForceUpdate();

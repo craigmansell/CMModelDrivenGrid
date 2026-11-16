@@ -151,6 +151,9 @@ Dynamic clauses can use row tokens such as `{{attribute}}`, `{{attribute.id}}`,
 
 Prerequisites are Node.js, npm, and the Microsoft Power Platform CLI.
 
+The interactive preview uses the same defaults as the control: infinite scrolling
+and a hidden alphabet bar. Header dropdown cards retain their existing functions.
+
 ### Try the interactive sample
 
 ```powershell

@@ -365,14 +365,17 @@ async function testColumnFillOnResize(): Promise<void> {
 async function testInfiniteScrollDistanceFallback(): Promise<void> {
 	const previousObserver = globalThis.IntersectionObserver;
 	Object.defineProperty(globalThis, "IntersectionObserver", { value: undefined, configurable: true, writable: true });
-	let loadCalls = 0;
 	try {
-		await act(async () => { renderGrid({ infiniteScroll: true, hasNextPage: true, loadNextPage: () => { loadCalls++; } }); });
-		const button = Array.from(container.querySelectorAll("button")).find((element) => element.textContent?.trim() === "Load more");
-		assert(!button, "Automatic scrolling must never require a Load more button.");
-		const port = container.querySelector('.ms-ScrollablePane--contentContainer') as HTMLElement;
-		await act(async () => {port.scrollTop=500; port.dispatchEvent(new dom.window.Event('scroll'));});
-		assert(loadCalls === 1, "Scroll-distance fallback must request one page even without IntersectionObserver.");
+		for (const infiniteScroll of [undefined, true]) {
+			let loadCalls = 0;
+			await act(async () => { renderGrid({ infiniteScroll, hasNextPage: true, loadNextPage: () => { loadCalls++; } }); });
+			const button = Array.from(container.querySelectorAll("button")).find((element) => element.textContent?.trim() === "Load more");
+			assert(!button && !container.querySelector('button[aria-label="Next page"]'), "Default automatic scrolling must not show manual paging buttons.");
+			assert(!container.querySelector('.cm-grid-jump-bar'), 'The alphabet bar must remain hidden unless explicitly enabled.');
+			const port = container.querySelector('.ms-ScrollablePane--contentContainer') as HTMLElement;
+			await act(async () => {port.scrollTop=500; port.dispatchEvent(new dom.window.Event('scroll'));});
+			assert(loadCalls === 1, "Default and explicit infinite scrolling must request one page even without IntersectionObserver.");
+		}
 	} finally {
 		Object.defineProperty(globalThis, "IntersectionObserver", { value: previousObserver, configurable: true, writable: true });
 	}

@@ -182,22 +182,34 @@
 	min-height: 0;
 	container: cm-column-callout / size;
 	overflow: hidden;
-	border: 1px solid #edebe9;
-	border-radius: 4px;
-	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+	border: 1px solid #e0e0e0;
+	border-radius: 8px;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14), 0 2px 4px rgba(0, 0, 0, 0.08);
 	font-family: "Segoe UI", sans-serif;
-	color: #323130;
+	color: #242424;
 }
 
 .cm-grid-column-callout *, .cm-grid-column-callout *::before, .cm-grid-column-callout *::after { box-sizing: border-box; }
 .cm-column-menu { display: flex; flex-direction: column; height: 100%; min-height: 0; width: 100%; overflow: hidden; padding: 6px 0; background: #fff; }
 .cm-column-menu-body { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }
 .cm-column-menu-body > * { flex-shrink: 0; }
-.cm-column-menu-title { padding: 8px 12px; font-size: 14px; font-weight: 600; }
+.cm-column-menu-title { padding: 12px 16px 10px; border-bottom: 1px solid #ebebeb; margin-bottom: 4px; font-size: 16px; line-height: 22px; font-weight: 600; }
+.cm-column-menu-body > .ms-Button { width: calc(100% - 16px); margin: 0 8px; padding-inline: 8px; border-radius: 4px; color: #242424; }
+.cm-column-menu-body > .ms-Button:not(:disabled):hover { background: #f5f5f5; }
+.cm-column-menu-body > .ms-Button:not(:disabled):active { background: #ebebeb; }
+.cm-column-menu-body > .ms-Button .ms-Button-label { font-size: 14px; font-weight: 400; }
+.cm-column-menu-body > .ms-Button .ms-Button-icon,
+.cm-column-menu-body > .ms-Button .ms-Button-menuIcon { color: #616161; }
+.cm-column-menu-body > .ms-Button:disabled,
+.cm-column-menu-body > .ms-Button:disabled .ms-Icon { color: #bdbdbd; }
 .cm-column-menu-separator { margin: 4px 0; border-top: 1px solid #edebe9; }
 .cm-column-menu-values { display: flex; flex: 1; flex-direction: column; min-height: 0; gap: 4px; padding: 8px 12px 0; }
 .cm-column-menu-values > .ms-TextField { flex-shrink: 0; }
-.cm-column-value-list { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; border: 1px solid #d2d0ce; border-radius: 2px; padding: 4px 8px; }
+.cm-column-value-list { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; border: 1px solid #e0e0e0; border-radius: 4px; padding: 6px 10px; }
+.cm-column-menu-values .ms-TextField-fieldGroup { border-color: #d1d1d1; border-radius: 4px; }
+.cm-column-menu-values .ms-TextField-fieldGroup:focus-within { border-color: #0f6cbd; }
+.cm-column-value-list .ms-Checkbox-label { border-radius: 3px; }
+.cm-column-value-list .ms-Checkbox-label:hover { background: #f5f5f5; }
 /* Decorative Excel-style guides share the checkbox rows' geometry, so they
    stay connected when labels wrap or the list scrolls. */
 .cm-column-value-list > .ms-Checkbox { position: relative; padding-inline-start: 12px; }
@@ -220,7 +232,12 @@
 .cm-column-value-list > .ms-Checkbox:first-child::before { inset-block-start: 50%; }
 .cm-column-value-list > .ms-Checkbox:last-child::before,
 .cm-column-value-list > .ms-Checkbox:has(+ [role="status"])::before { inset-block-end: 50%; }
-.cm-column-menu-footer { flex-shrink: 0; padding: 8px 12px 6px; }
+.cm-column-menu-footer { flex-shrink: 0; padding: 10px 12px 8px; margin-top: 8px; border-top: 1px solid #ebebeb; background: #fafafa; }
+.cm-column-menu-footer .cm-filter-note { color: #616161; }
+.cm-column-menu-footer .ms-Button { border-radius: 4px; }
+.cm-column-menu-footer .ms-Button--default { border-color: #d1d1d1; color: #242424; }
+.cm-column-menu-footer .ms-Button--primary { background: #0f6cbd; border-color: #0f6cbd; }
+.cm-column-menu-footer .ms-Button--primary:hover { background: #115ea3; border-color: #115ea3; }
 .cm-filter-note { color: #605e5c; font-size: 12px; line-height: 1.4; }
 .cm-filter-sort-summary { color: #605e5c; font-size: 12px; line-height: 1.5; padding: 4px 12px; }
 .cm-filter-error { color: #a4262c; padding: 8px 12px; }
@@ -238,7 +255,7 @@
 .cm-filter-editor-second-condition { margin-top: 12px; padding-top: 4px; border-top: 1px solid #edebe9; }
 .cm-filter-editor fieldset { min-width: 0; border: 0; padding: 0; margin: 0 0 12px; }
 .cm-filter-editor label { display: block; margin: 8px 0 4px; }
-.cm-filter-editor select, .cm-filter-editor input:not([type="checkbox"]):not([type="radio"]) { width: 100%; min-width: 0; min-height: 32px; border: 1px solid #8a8886; border-radius: 2px; padding: 5px 8px; font: inherit; background: white; color: #323130; }
+.cm-filter-editor select, .cm-filter-editor input:not([type="checkbox"]):not([type="radio"]) { width: 100%; min-width: 0; min-height: 32px; border: 1px solid #d1d1d1; border-radius: 4px; padding: 5px 8px; font: inherit; background: white; color: #242424; }
 .cm-filter-editor input:focus-visible, .cm-filter-editor select:focus-visible { outline: 2px solid #0f6cbd; outline-offset: 1px; }
 .cm-filter-editor [role="alert"] { color: #a4262c; margin: 8px 0; }
 
@@ -266,7 +283,7 @@
 }
 
 .cm-grid-column-callout .ms-Button {
-	border-radius: 2px;
+	border-radius: 4px;
 }
 
 .cm-model-driven-grid .cm-grid-active-filters {
