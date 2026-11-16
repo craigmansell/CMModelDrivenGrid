@@ -19,6 +19,7 @@ normal suite: [fix validation and exact package identity](VALIDATION-FIXES-2026-
 ## Main capabilities
 
 - Sort and filter dataset columns, including a value picker and active-filter chips.
+- Click a column header to open its existing dropdown; click the same header again to close it without applying drafts. This works in parent and child grids.
 - Edit supported scalar, choice, Boolean, and lookup columns in place.
 - Open lookup values as related Dataverse records.
 - Select rows, select records across dataset pages, and copy a selected cell range as TSV.

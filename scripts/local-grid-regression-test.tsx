@@ -185,6 +185,75 @@ function updateGrid(overrides: Partial<GridProps>): void {
 	ReactDOM.render(React.createElement(Grid, currentGridProps), container);
 }
 
+async function testColumnHeaderToggle(): Promise<void> {
+	const columns = [
+		{ name: 'name', displayName: 'Name', dataType: 'SingleLine.Text', order: 0, visualSizeFactor: 180 },
+		{ name: 'amount', displayName: 'Amount', dataType: 'Currency', order: 1, visualSizeFactor: 120 },
+	] as ComponentFramework.PropertyHelper.DataSetApi.Column[];
+	let filterCalls = 0;
+	let sortCalls = 0;
+	const parent = makeRecord('parent', { name: 'Parent', amount: 10 }, { name: 'Parent', amount: '10.00' });
+	const props = createGridProps({ columns, records: { parent }, sortedRecordIds: ['parent'],
+		onFilter: () => { filterCalls++; }, onSort: () => { sortCalls++; } });
+	const header = (scope: ParentNode, name: string) => {
+		const element = scope.querySelector<HTMLElement>(`.ms-DetailsHeader-cellTitle[aria-label="${name}, column actions"]`);
+		assert(!!element, `Missing ${name} column header.`);
+		return element!;
+	};
+	const clickHeader = async (scope: ParentNode, name: string) => {
+		await act(async () => {
+			const element = header(scope, name);
+			element.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true }));
+			element.focus();
+			element.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
+			// Target a nested label, as real header text and chevron clicks bubble.
+			(element.querySelector('.ms-DetailsHeader-cellName') ?? element)
+				.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true }));
+			await new Promise(resolve => setTimeout(resolve, 5));
+		});
+	};
+	const menu = () => document.querySelector('.cm-grid-column-callout');
+	await act(async () => { renderGrid(props); });
+	await clickHeader(container, 'Name');
+	assert(!!menu() && header(container, 'Name').getAttribute('aria-expanded') === 'true', 'First header click must open the existing dropdown.');
+	const search = menu()!.querySelector<HTMLInputElement>('[aria-label="Search filter values"]')!;
+	await act(async () => { search.value = 'unsaved'; Simulate.change(search); });
+	await clickHeader(container, 'Name');
+	assert(!menu() && header(container, 'Name').getAttribute('aria-expanded') === 'false', 'Second click on the same header must close its dropdown.');
+	assert(filterCalls === 0 && sortCalls === 0, 'Closing a header must discard unapplied choices without filtering or sorting.');
+	await clickHeader(container, 'Name');
+	assert(menu()?.querySelector<HTMLInputElement>('[aria-label="Search filter values"]')?.value === '', 'Reopening must start with clean, unapplied search state.');
+	await clickHeader(container, 'Amount');
+	assert(document.querySelectorAll('.cm-grid-column-callout').length === 1 && menu()?.querySelector('.cm-column-menu-title')?.textContent === 'Amount', 'Clicking another header must switch directly to its menu.');
+	assert(header(container, 'Name').getAttribute('aria-expanded') === 'false' && header(container, 'Amount').getAttribute('aria-expanded') === 'true', 'Only the active header may be announced as expanded.');
+	await act(async () => {
+		const numberFilters = Array.from(menu()!.querySelectorAll('button')).find(button => button.querySelector('.ms-Button-label')?.textContent === 'Number filters');
+		assert(!!numberFilters, 'The existing Number filters action must remain available.');
+		Simulate.click(numberFilters!);
+	});
+	assert(!!menu()?.querySelector('.cm-filter-editor'), 'The existing condition editor must remain available.');
+	await clickHeader(container, 'Amount');
+	assert(!menu(), 'The same header must also close the condition-editor view.');
+	await clickHeader(container, 'Amount');
+	await act(async () => { document.body.dispatchEvent(new window.MouseEvent('click', { bubbles: true })); });
+	assert(!menu(), 'Clicking outside must still dismiss the dropdown.');
+
+	const { HierarchyGrid } = require('../CMModelDrivenGrid/HierarchyGrid') as typeof import('../CMModelDrivenGrid/HierarchyGrid');
+	await act(async () => {
+		ReactDOM.unmountComponentAtNode(container);
+		ReactDOM.render(<HierarchyGrid {...props} childRows={{ loadPage: async () => ({
+			records: [makeRecord('child', { name: 'Child', amount: 5 }, { name: 'Child', amount: '5.00' })], hasNextPage: false,
+		}) }} />, container);
+	});
+	await act(async () => { Simulate.click(container.querySelector('button[aria-label="Expand child options for Parent"]')!); await Promise.resolve(); });
+	const panel = container.querySelector('.cm-child-panel')!;
+	await clickHeader(panel, 'Name');
+	assert(!!menu(), 'Child column headers must open the same dropdown.');
+	await clickHeader(panel, 'Name');
+	assert(!menu(), 'A second child-header click must also close its dropdown.');
+	assert(filterCalls === 0 && sortCalls === 0, 'Toggling child menus must not change the parent query.');
+}
+
 async function testRawFilterValues(): Promise<void> {
 	const column: ComponentFramework.PropertyHelper.DataSetApi.Column = {
 		name: "statuscode",
@@ -514,6 +583,8 @@ async function testInfiniteScrollIdentityGuard(): Promise<void> {
 }
 
 async function run(): Promise<void> {
+	console.log('Checking column-header open/close toggles...');
+	await testColumnHeaderToggle();
 	console.log('Checking grouping, complete totals and compact-list parity...');
 	await testPresentationParity();
 	await testExcelAdditions();

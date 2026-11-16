@@ -1764,9 +1764,13 @@ export const Grid = React.memo((props: GridProps) => {
 	const onColumnClick = React.useCallback(
 		(ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
 			ev.preventDefault();
-			openFilterCallout(column, ev.currentTarget as HTMLElement);
+			if (filterColumn?.key === column.key && filterTarget) {
+				onFilterDismiss();
+			} else {
+				openFilterCallout(column, ev.currentTarget as HTMLElement);
+			}
 		},
-		[openFilterCallout]
+		[filterColumn?.key, filterTarget, onFilterDismiss, openFilterCallout]
 	);
 
 	const onNextPage = React.useCallback(() => {
@@ -2374,6 +2378,7 @@ export const Grid = React.memo((props: GridProps) => {
 							ariaLabel={`Filter ${filterColumn.name}`}
 							target={filterTarget}
 							onDismiss={onFilterDismiss}
+							dismissOnTargetClick={false}
 							directionalHint={DirectionalHint.bottomLeftEdge}
 							gapSpace={0}
 							isBeakVisible={false}

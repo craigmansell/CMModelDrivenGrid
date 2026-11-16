@@ -1,5 +1,13 @@
 # CMModelDrivenGridSolution changelog
 
+## Native grid presentation candidate 1.0.97.0 / control 1.0.118 — 2026-11-16
+
+- Move the grid surface towards the modern Power Apps grid: neutral headers and selected rows, clearer text and separators, 16-pixel square checkboxes, visible header focus, and white child panels with a neutral hierarchy rail. Remove the extra frame inside the model-driven form section. Retain row heights, column sizing, virtual scrolling and the existing native command bar.
+- Keep the owner's existing column dropdown design, checklist, sort/filter commands and condition editor. Clicking a header opens its dropdown; clicking the same header again closes it without applying drafts. Clicking another header switches menus. Parent and child grids share the toggle.
+- Add interaction regressions for open/close/reopen, unapplied-search reset, switching columns, condition-editor dismissal, outside clicks and child headers. The second-click regression fails on the previous implementation.
+- Full `npm run test:local` and the authoritative Release solution build (including TypeScript and ESLint) pass. The existing three Webpack size/performance recommendations remain; the bundle is 730 KiB. The interactive sample compiles and serves the changed stylesheet on loopback. The complete dropdown stylesheet block is unchanged.
+- Verified the candidate ZIP contains one PCF root component, `Managed=0`, solution `1.0.97.0` and control `1.0.118`. SHA-256: `3DD88DFE13C591CA199BDF821EC75B69FF2E62522A8304087D344C8B2898EDD6`. No Dataverse write or deployment has been performed. Computer Use stopped because it could not verify the active browser URL; local visual review and signed-in runtime acceptance remain outstanding. See `REVIEW-NATIVE-GRID-2026-11-16.md`.
+
 ## Sandbox release 1.0.96.0 / control 1.0.117 — 2026-09-14
 
 - Published and verified the exact locally tested unmanaged package in Capricorn sandbox. Full local suite, focused test TypeScript and Release build pass (three existing bundle-size warnings). Published assets match; all Item Template forms, option views and publisher remain unchanged. No production/schema/ribbon/security changes.
