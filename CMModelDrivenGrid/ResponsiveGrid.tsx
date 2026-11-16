@@ -28,7 +28,14 @@ export function ResponsiveGrid({ fixedHeight, ...props }: ResponsiveGridProps): 
         let frame: number | undefined;
         const measure = (): void => {
             if (disposed) return;
-            const next = element.clientHeight > 0 ? element.clientHeight : undefined;
+            const available = element.clientHeight;
+            const top = element.getBoundingClientRect().top;
+            const visible = window.innerHeight - top;
+            // Native full-tab subgrids can include command-bar space in their
+            // host height. Keep our own content within the visible work area.
+            const next = available > 0
+                ? top >= 0 && visible > 0 ? Math.min(available, Math.max(1, Math.floor(visible))) : available
+                : undefined;
             setMeasuredHeight(current => current === next ? current : next);
         };
         const schedule = (): void => {

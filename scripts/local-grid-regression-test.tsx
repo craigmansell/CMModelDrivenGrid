@@ -192,6 +192,8 @@ async function testResponsiveSizing(): Promise<void> {
 	assert(resolveGridHeight(-1, undefined, 240) === 240, 'Automatic sizing must fit even a short available tab area.');
 	assert(resolveGridHeight(Number.NaN, 0, Infinity) === -1, 'Unavailable or invalid sizes must retain CSS fill sizing.');
 	const oldObserver = globalThis.ResizeObserver;
+	const oldViewportHeight = Object.getOwnPropertyDescriptor(window, 'innerHeight');
+	Object.defineProperty(window, 'innerHeight', {value:1200, configurable:true});
 	const observers: SizingObserver[] = [];
 	class SizingObserver {
 		target?: Element;
@@ -216,7 +218,9 @@ async function testResponsiveSizing(): Promise<void> {
 		const observer = observers.find(item => item.target === host)!;
 		assert(!!observer, 'Automatic sizing must observe only the component-owned host.');
 		let availableHeight = 720;
+		let hostTop = 0;
 		Object.defineProperty(host, 'clientHeight', {get: () => availableHeight, configurable: true});
+		host.getBoundingClientRect = () => ({top:hostTop,bottom:hostTop+availableHeight,left:0,right:1000,width:1000,height:availableHeight,x:0,y:hostTop,toJSON:()=>({})});
 		const grid = () => host.querySelector<HTMLElement>('.cm-model-driven-grid')!;
 		for (const height of [720, 900, 576, 240]) {
 			availableHeight = height;
@@ -226,6 +230,19 @@ async function testResponsiveSizing(): Promise<void> {
 		}
 		await act(async () => { (grid().querySelector('.ms-DetailsRow [role="checkbox"]') as HTMLElement).click(); });
 		assert(selected.join() === 'parent', 'The resize fixture must have a real selected record.');
+		availableHeight = 935; hostTop = 292.44140625;
+		Object.defineProperty(window, 'innerHeight', {value:1185, configurable:true});
+		await act(async () => { observer.resize(); await new Promise(resolve => setTimeout(resolve, 10)); });
+		assert(grid().style.height === '892px', 'A native full-tab host extending below the viewport must keep its footer visible below the command bar.');
+		hostTop = 200;
+		Object.defineProperty(window, 'innerHeight', {value:800, configurable:true});
+		await act(async () => { window.dispatchEvent(new Event('resize')); await new Promise(resolve => setTimeout(resolve, 10)); });
+		assert(grid().style.height === '600px' && selected.join() === 'parent', 'Viewport shrink must fit the visible work area without resetting selection.');
+		hostTop = 900;
+		await act(async () => { observer.resize(); await new Promise(resolve => setTimeout(resolve, 10)); });
+		assert(grid().style.height === '935px', 'An offscreen embedded grid must not collapse while its form is scrolled.');
+		hostTop = 0;
+		Object.defineProperty(window, 'innerHeight', {value:1200, configurable:true});
 		availableHeight = 810;
 		await act(async () => { window.dispatchEvent(new Event('resize')); await new Promise(resolve => setTimeout(resolve, 10)); });
 		assert(grid().style.height === '810px' && selected.join() === 'parent', 'Window resizing must update the height while retaining selection.');
@@ -242,6 +259,7 @@ async function testResponsiveSizing(): Promise<void> {
 	} finally {
 		ReactDOM.unmountComponentAtNode(container);
 		Object.defineProperty(globalThis, 'ResizeObserver', {value:oldObserver, configurable:true, writable:true});
+		if (oldViewportHeight) Object.defineProperty(window, 'innerHeight', oldViewportHeight);
 	}
 }
 

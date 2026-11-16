@@ -1,9 +1,10 @@
 # DrivenGrid presentation and scrolling — 16 November 2026
 
-**Published sandbox candidate: control 1.0.119 / unmanaged solution 1.0.98.0.**
-Local automated and browser checks pass. Installed versions and all three resource
-hashes match the tested package. **Signed-in menu/command smoke acceptance remains
-pending because Computer Use's connection became unavailable.** No production change.
+**Historical sandbox candidate: control 1.0.119 / unmanaged solution 1.0.98.0.**
+Superseded by the accepted 1.0.121 full-tab release described in
+`REVIEW-FULL-TAB-2026-11-16.md`. The initial signed-in connection failure below
+was resolved for the final browser-only functional checks. The owner waived
+screenshot capture. No production change.
 
 ## Requested behaviour and implemented scope
 
@@ -76,7 +77,13 @@ baseline and its exact 1.0.117 bundle before any import.
 No business records, forms/views, schema, relationships, ribbon, security or
 production customizations were changed by this batch.
 
-## Remaining runtime acceptance
+## Historical runtime acceptance blocker
+
+This intermediate 1.0.119 record is superseded by the 1.0.121 full-tab release.
+Signed-in browser-only functional checks now cover the parent/child toggles,
+search Cancel, cards, automatic scrolling, native Edit and inline-edit Cancel.
+The owner waived screenshot capture. Final evidence and package records are in
+`REVIEW-FULL-TAB-2026-11-16.md`; the following describes the earlier interruption.
 
 A genuinely fresh signed-in QA form loaded the existing disposable template with
 33 records, no alphabet bar and no visible grid errors. During the first live menu
