@@ -48,7 +48,7 @@ export function indexDemoRows(rows: DemoRow[]): {parents: DemoRow[]; byId: Map<s
     return {parents, byId, children};
 }
 
-export function pageDemoRows(rows: DemoRow[], page: number, pageSize = 25): {rows: DemoRow[]; hasNextPage: boolean} {
+export function pageDemoRows<T>(rows: T[], page: number, pageSize = 25): {rows: T[]; hasNextPage: boolean} {
     if (!Number.isInteger(page) || page < 1 || !Number.isInteger(pageSize) || pageSize < 1) throw new Error('Invalid sample page.');
     return {rows: rows.slice((page - 1) * pageSize, page * pageSize), hasNextPage: page * pageSize < rows.length};
 }

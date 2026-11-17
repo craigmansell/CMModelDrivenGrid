@@ -9,6 +9,7 @@ import { FilterExpression, updateColumnFilter } from "../CMModelDrivenGrid/filte
 import { DemoColumnKind, DemoFilterExpression, evaluateDemoFilter, getLocalDateOrdinal, sortDemoRows } from "./demo-filter-evaluator";
 import { DemoRow as Row, DemoScenario, demoScenario, seedDemoRows, indexDemoRows, pageDemoRows } from './demo-data';
 import { checkSelectionCancelled, selectionResult } from '../CMModelDrivenGrid/recordSelection';
+import { R200sDemo } from './r200s-demo';
 import "../CMModelDrivenGrid/css/CMModelDrivenGrid.css";
 
 initializeIcons(undefined, { disableWarnings: true });
@@ -231,4 +232,4 @@ function Demo(): React.ReactElement {
         </Dialog>
     </>;
 }
-ReactDOM.render(<Demo />, document.getElementById("demo-root"));
+ReactDOM.render(new URLSearchParams(window.location.search).get('demo') === 'r200s' ? <R200sDemo /> : <Demo />, document.getElementById("demo-root"));

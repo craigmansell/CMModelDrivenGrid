@@ -1,5 +1,12 @@
 # CMModelDrivenGridSolution changelog
 
+## Local R200S linked-options demo — 2026-11-17
+
+- Add `?demo=r200s&fulltab=1` to the existing local harness, using the same ResponsiveGrid and HierarchyGrid as the installed control. Expand four linked-option groups into 32 conditions and 68 result links from the read-only 17 November Blindata snapshot. Keep both empty result rules visible without inventing children.
+- Preserve hierarchy arrows, repeat-click header menus, per-level filtering/sorting, selection, retained expansions, scrolling and full-tab sizing by reusing the current control. The only shared helper change makes the local page function generic at the type level; its runtime logic is unchanged. Existing demo routes are preserved.
+- Add exact example-chain and fixture-integrity checks to the local suite. Demo cells are read-only, with local inspection and reset commands. No PCF runtime source, manifest, solution version, database record or Dataverse customization change; installed control remains 1.0.122 / unmanaged solution 1.0.101.0.
+- The full local suite and scoped TypeScript check pass. Canonicalize every demo level by its stored sequence rather than query row order. Browser-only checks pass for linked-option/condition/result expansion, repeat-click header open/close at all three levels, exact-result inspection, selection cleanup on collapse, retained nested expansion, child filtering and the empty-result rule. Full-tab geometry fits the viewport, with no alphabet bar or editable cells. Screenshot and browser evidence: CrmPackage `outputs/qa/r200s-subgrid-demo-20261117/`.
+
 ## Sandbox Power Apps grid styling 1.0.101.0 / control 1.0.122 — 2026-11-16
 
 - Match the observed native sandbox grid: white header, underlined darker-blue links, lighter row separators, blue selection, adjacent dropdown chevrons and right-aligned numeric headings. Use a single rounded outer frame and a 42-pixel combined header/row rhythm.

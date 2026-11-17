@@ -1,0 +1,1494 @@
+{
+  "capturedOn": "2026-11-17",
+  "source": "Blindata read-only SELECT",
+  "blindType": {
+    "id": 461,
+    "code": "R200S",
+    "description": "R200S - Standard Roller Blind"
+  },
+  "linkedOptions": [
+    {
+      "id": 103,
+      "sequence": 2,
+      "name": "Mechanism",
+      "conditions": [
+        {
+          "id": 313,
+          "sequence": 1,
+          "choices": [
+            {
+              "group": "Barrel Type",
+              "code": "R8021",
+              "description": "32mm Roller Tube 5.0M Aluminium"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-WHITE",
+              "description": "White Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 598,
+              "sequence": 1,
+              "choiceId": 52327,
+              "code": "R3015-SL1-WH",
+              "description": "System 32 Side Control Slide-Lock End Set with Metal Brackets - Medium - Blue Pin - White"
+            }
+          ]
+        },
+        {
+          "id": 314,
+          "sequence": 2,
+          "choices": [
+            {
+              "group": "Barrel Type",
+              "code": "R8024 (MUST BE BATCH AR)",
+              "description": "40mm Roller Tube 5.0M Double Slot"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-WHITE",
+              "description": "White Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 600,
+              "sequence": 2,
+              "choiceId": 52344,
+              "code": "R3050-SL1-WH",
+              "description": "System 40 Slide-Lock (for R8030 back bar/RM2106 open cassette) - White"
+            }
+          ]
+        },
+        {
+          "id": 315,
+          "sequence": 3,
+          "choices": [
+            {
+              "group": "Barrel Type",
+              "code": "R8027",
+              "description": "45mm Roller Tube 5m Triple Slot"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-WHITE",
+              "description": "White Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 601,
+              "sequence": 1,
+              "choiceId": 52338,
+              "code": "R3035-SL1-WH",
+              "description": "End Set 45 Slidelock Std Pin White"
+            }
+          ]
+        },
+        {
+          "id": 2676,
+          "sequence": 4,
+          "choices": [
+            {
+              "group": "Barrel Type",
+              "code": "R8021",
+              "description": "32mm Roller Tube 5.0M Aluminium"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-AGREY",
+              "description": "Anthracite Grey Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 4768,
+              "sequence": 1,
+              "choiceId": 57843,
+              "code": "R3015-SL1-AG",
+              "description": "System 32 Side Control Slide-Lock End Set with Metal Brackets - Medium - Blue Pin - Anthracite Grey"
+            }
+          ]
+        },
+        {
+          "id": 2677,
+          "sequence": 5,
+          "choices": [
+            {
+              "group": "Barrel Type",
+              "code": "R8024 (MUST BE BATCH AR)",
+              "description": "40mm Roller Tube 5.0M Double Slot"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-AGREY",
+              "description": "Anthracite Grey Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 4769,
+              "sequence": 1,
+              "choiceId": 59366,
+              "code": "R3050-SL1-ANT",
+              "description": "System 40 Slide-Lock (for R8030 back bar/RM2106 open cassette) - Anthracite Grey"
+            }
+          ]
+        },
+        {
+          "id": 2678,
+          "sequence": 6,
+          "choices": [
+            {
+              "group": "Barrel Type",
+              "code": "R8027",
+              "description": "45mm Roller Tube 5m Triple Slot"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-AGREY",
+              "description": "Anthracite Grey Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 4772,
+              "sequence": 1,
+              "choiceId": 62077,
+              "code": "R3035-SL1-GR",
+              "description": "End Set 45 Slidelock Std Pin Grey"
+            }
+          ]
+        },
+        {
+          "id": 2679,
+          "sequence": 7,
+          "choices": [
+            {
+              "group": "Barrel Type",
+              "code": "R8021",
+              "description": "32mm Roller Tube 5.0M Aluminium"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-BLACK",
+              "description": "Black Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 4770,
+              "sequence": 1,
+              "choiceId": 52325,
+              "code": "R3015-SL1-BK",
+              "description": "System 32 Side Control Slide-Lock End Set with Metal Brackets - Medium - Blue Pin - Black"
+            }
+          ]
+        },
+        {
+          "id": 2680,
+          "sequence": 8,
+          "choices": [
+            {
+              "group": "Barrel Type",
+              "code": "R8024 (MUST BE BATCH AR)",
+              "description": "40mm Roller Tube 5.0M Double Slot"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-BLACK",
+              "description": "Black Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 4771,
+              "sequence": 1,
+              "choiceId": 52343,
+              "code": "R3050-SL1-BK",
+              "description": "System 40 Slide-Lock (for R8030 back bar/RM2106 open cassette) - Black"
+            }
+          ]
+        },
+        {
+          "id": 2681,
+          "sequence": 9,
+          "choices": [
+            {
+              "group": "Barrel Type",
+              "code": "R8027",
+              "description": "45mm Roller Tube 5m Triple Slot"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-BLACK",
+              "description": "Black Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 4773,
+              "sequence": 1,
+              "choiceId": 61938,
+              "code": "R3035-SL1-BK",
+              "description": "End Set 45 Slidelock Std Pin Black"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 105,
+      "sequence": 3,
+      "name": "Bracket Cover",
+      "conditions": [
+        {
+          "id": 319,
+          "sequence": 2,
+          "choices": [
+            {
+              "group": "Fixing Option",
+              "code": "FIXING-F",
+              "description": "Face Fix"
+            },
+            {
+              "group": "Barrel Type",
+              "code": "R8021",
+              "description": "32mm Roller Tube 5.0M Aluminium"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-WHITE",
+              "description": "White Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2 AND Choice3",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 3191,
+              "sequence": 1,
+              "choiceId": 53131,
+              "code": "R3080-32-WH",
+              "description": "Enclosed Bracket Cover 32mm White"
+            },
+            {
+              "id": 609,
+              "sequence": 3,
+              "choiceId": 51163,
+              "code": "NOBKTCOV",
+              "description": "No Bracket Covers"
+            },
+            {
+              "id": 4732,
+              "sequence": 4,
+              "choiceId": 52339,
+              "code": "R3041-WH",
+              "description": "System 32 Roller Blind Bracket Covers White"
+            }
+          ]
+        },
+        {
+          "id": 320,
+          "sequence": 1,
+          "choices": [
+            {
+              "group": "Fixing Option",
+              "code": "FIXING-T",
+              "description": "Top Fix"
+            },
+            {
+              "group": "Barrel Type",
+              "code": "R8021",
+              "description": "32mm Roller Tube 5.0M Aluminium"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-WHITE",
+              "description": "White Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2 AND Choice3",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 608,
+              "sequence": 1,
+              "choiceId": 51163,
+              "code": "NOBKTCOV",
+              "description": "No Bracket Covers"
+            },
+            {
+              "id": 3516,
+              "sequence": 2,
+              "choiceId": 53131,
+              "code": "R3080-32-WH",
+              "description": "Enclosed Bracket Cover 32mm White"
+            },
+            {
+              "id": 4731,
+              "sequence": 3,
+              "choiceId": 52339,
+              "code": "R3041-WH",
+              "description": "System 32 Roller Blind Bracket Covers White"
+            }
+          ]
+        },
+        {
+          "id": 1925,
+          "sequence": 3,
+          "choices": [
+            {
+              "group": "Fixing Option",
+              "code": "FIXING-F",
+              "description": "Face Fix"
+            },
+            {
+              "group": "Barrel Type",
+              "code": "R8024 (MUST BE BATCH AR)",
+              "description": "40mm Roller Tube 5.0M Double Slot"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-WHITE",
+              "description": "White Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2 AND Choice3",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 3192,
+              "sequence": 1,
+              "choiceId": 53135,
+              "code": "R3080-40-WH",
+              "description": "Enclosed Bracket Cover 40mm White"
+            },
+            {
+              "id": 3187,
+              "sequence": 3,
+              "choiceId": 51163,
+              "code": "NOBKTCOV",
+              "description": "No Bracket Covers"
+            },
+            {
+              "id": 4733,
+              "sequence": 4,
+              "choiceId": 52340,
+              "code": "R3042-WH",
+              "description": "System 40 Roller Blind Bracket Covers White"
+            }
+          ]
+        },
+        {
+          "id": 2154,
+          "sequence": 5,
+          "choices": [
+            {
+              "group": "Fixing Option",
+              "code": "FIXING-T",
+              "description": "Top Fix"
+            },
+            {
+              "group": "Barrel Type",
+              "code": "R8024 (MUST BE BATCH AR)",
+              "description": "40mm Roller Tube 5.0M Double Slot"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-WHITE",
+              "description": "White Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2 AND Choice3",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 3517,
+              "sequence": 1,
+              "choiceId": 51163,
+              "code": "NOBKTCOV",
+              "description": "No Bracket Covers"
+            },
+            {
+              "id": 3518,
+              "sequence": 2,
+              "choiceId": 53135,
+              "code": "R3080-40-WH",
+              "description": "Enclosed Bracket Cover 40mm White"
+            },
+            {
+              "id": 4734,
+              "sequence": 3,
+              "choiceId": 52340,
+              "code": "R3042-WH",
+              "description": "System 40 Roller Blind Bracket Covers White"
+            }
+          ]
+        },
+        {
+          "id": 2155,
+          "sequence": 6,
+          "choices": [
+            {
+              "group": "Fixing Option",
+              "code": "FIXING-T",
+              "description": "Top Fix"
+            },
+            {
+              "group": "Barrel Type",
+              "code": "R8027",
+              "description": "45mm Roller Tube 5m Triple Slot"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-WHITE",
+              "description": "White Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2 AND Choice3",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 3519,
+              "sequence": 1,
+              "choiceId": 51163,
+              "code": "NOBKTCOV",
+              "description": "No Bracket Covers"
+            },
+            {
+              "id": 3520,
+              "sequence": 2,
+              "choiceId": 53138,
+              "code": "R3080-45-WH",
+              "description": "Enclosed Bracket Cover 45mm White"
+            },
+            {
+              "id": 4735,
+              "sequence": 3,
+              "choiceId": 52341,
+              "code": "R3043-WH",
+              "description": "System 45 Roller Blind Bracket Covers White"
+            }
+          ]
+        },
+        {
+          "id": 2662,
+          "sequence": 7,
+          "choices": [
+            {
+              "group": "Fixing Option",
+              "code": "FIXING-F",
+              "description": "Face Fix"
+            },
+            {
+              "group": "Barrel Type",
+              "code": "R8027",
+              "description": "45mm Roller Tube 5m Triple Slot"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-WHITE",
+              "description": "White Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2 AND Choice3",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 4728,
+              "sequence": 1,
+              "choiceId": 51163,
+              "code": "NOBKTCOV",
+              "description": "No Bracket Covers"
+            },
+            {
+              "id": 4729,
+              "sequence": 2,
+              "choiceId": 53138,
+              "code": "R3080-45-WH",
+              "description": "Enclosed Bracket Cover 45mm White"
+            },
+            {
+              "id": 4736,
+              "sequence": 3,
+              "choiceId": 52341,
+              "code": "R3043-WH",
+              "description": "System 45 Roller Blind Bracket Covers White"
+            }
+          ]
+        },
+        {
+          "id": 2663,
+          "sequence": 8,
+          "choices": [
+            {
+              "group": "Fixing Option",
+              "code": "FIXING-S",
+              "description": "Side Fix"
+            }
+          ],
+          "rule": "",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 4730,
+              "sequence": 1,
+              "choiceId": 51163,
+              "code": "NOBKTCOV",
+              "description": "No Bracket Covers"
+            }
+          ]
+        },
+        {
+          "id": 2664,
+          "sequence": 9,
+          "choices": [
+            {
+              "group": "Fixing Option",
+              "code": "FIXING-T",
+              "description": "Top Fix"
+            },
+            {
+              "group": "Barrel Type",
+              "code": "R8021",
+              "description": "32mm Roller Tube 5.0M Aluminium"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-BLACK",
+              "description": "Black Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2 AND Choice3",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 4737,
+              "sequence": 1,
+              "choiceId": 51163,
+              "code": "NOBKTCOV",
+              "description": "No Bracket Covers"
+            },
+            {
+              "id": 4738,
+              "sequence": 2,
+              "choiceId": 66246,
+              "code": "R3041-BL",
+              "description": "System 32 Roller Blind Bracket Covers Black"
+            },
+            {
+              "id": 4739,
+              "sequence": 3,
+              "choiceId": 53132,
+              "code": "R3080-32-BL",
+              "description": "Enclosed Bracket Cover 32mm Black"
+            }
+          ]
+        },
+        {
+          "id": 2665,
+          "sequence": 10,
+          "choices": [
+            {
+              "group": "Fixing Option",
+              "code": "FIXING-F",
+              "description": "Face Fix"
+            },
+            {
+              "group": "Barrel Type",
+              "code": "R8021",
+              "description": "32mm Roller Tube 5.0M Aluminium"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-BLACK",
+              "description": "Black Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2 AND Choice3",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 4740,
+              "sequence": 1,
+              "choiceId": 51163,
+              "code": "NOBKTCOV",
+              "description": "No Bracket Covers"
+            },
+            {
+              "id": 4741,
+              "sequence": 2,
+              "choiceId": 66246,
+              "code": "R3041-BL",
+              "description": "System 32 Roller Blind Bracket Covers Black"
+            },
+            {
+              "id": 4742,
+              "sequence": 3,
+              "choiceId": 53132,
+              "code": "R3080-32-BL",
+              "description": "Enclosed Bracket Cover 32mm Black"
+            }
+          ]
+        },
+        {
+          "id": 2666,
+          "sequence": 11,
+          "choices": [
+            {
+              "group": "Fixing Option",
+              "code": "FIXING-T",
+              "description": "Top Fix"
+            },
+            {
+              "group": "Barrel Type",
+              "code": "R8024 (MUST BE BATCH AR)",
+              "description": "40mm Roller Tube 5.0M Double Slot"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-BLACK",
+              "description": "Black Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2 AND Choice3",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 4743,
+              "sequence": 1,
+              "choiceId": 51163,
+              "code": "NOBKTCOV",
+              "description": "No Bracket Covers"
+            },
+            {
+              "id": 4744,
+              "sequence": 2,
+              "choiceId": 64436,
+              "code": "R3042-BK",
+              "description": "System 40 Roller Blind Bracket Covers - Black"
+            },
+            {
+              "id": 4745,
+              "sequence": 3,
+              "choiceId": 53136,
+              "code": "R3080-40-BL",
+              "description": "System 40 Enclosed Bracket Covers Black"
+            }
+          ]
+        },
+        {
+          "id": 2667,
+          "sequence": 12,
+          "choices": [
+            {
+              "group": "Fixing Option",
+              "code": "FIXING-F",
+              "description": "Face Fix"
+            },
+            {
+              "group": "Barrel Type",
+              "code": "R8024 (MUST BE BATCH AR)",
+              "description": "40mm Roller Tube 5.0M Double Slot"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-BLACK",
+              "description": "Black Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2 AND Choice3",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": []
+        },
+        {
+          "id": 2668,
+          "sequence": 13,
+          "choices": [
+            {
+              "group": "Fixing Option",
+              "code": "FIXING-F",
+              "description": "Face Fix"
+            },
+            {
+              "group": "Barrel Type",
+              "code": "R8027",
+              "description": "45mm Roller Tube 5m Triple Slot"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-BLACK",
+              "description": "Black Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2 AND Choice3",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 4746,
+              "sequence": 1,
+              "choiceId": 66284,
+              "code": "R3043-BL",
+              "description": "System 45 Roller Blind Bracket Covers Black"
+            },
+            {
+              "id": 4747,
+              "sequence": 2,
+              "choiceId": 53139,
+              "code": "R3080-45-BL",
+              "description": "Enclosed Bracket Cover 45mm Black"
+            }
+          ]
+        },
+        {
+          "id": 2669,
+          "sequence": 14,
+          "choices": [
+            {
+              "group": "Fixing Option",
+              "code": "FIXING-T",
+              "description": "Top Fix"
+            },
+            {
+              "group": "Barrel Type",
+              "code": "R8027",
+              "description": "45mm Roller Tube 5m Triple Slot"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-BLACK",
+              "description": "Black Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2 AND Choice3",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 4748,
+              "sequence": 1,
+              "choiceId": 51163,
+              "code": "NOBKTCOV",
+              "description": "No Bracket Covers"
+            },
+            {
+              "id": 4750,
+              "sequence": 2,
+              "choiceId": 66284,
+              "code": "R3043-BL",
+              "description": "System 45 Roller Blind Bracket Covers Black"
+            },
+            {
+              "id": 4751,
+              "sequence": 3,
+              "choiceId": 53139,
+              "code": "R3080-45-BL",
+              "description": "Enclosed Bracket Cover 45mm Black"
+            }
+          ]
+        },
+        {
+          "id": 2670,
+          "sequence": 15,
+          "choices": [
+            {
+              "group": "Fixing Option",
+              "code": "FIXING-T",
+              "description": "Top Fix"
+            },
+            {
+              "group": "Barrel Type",
+              "code": "R8021",
+              "description": "32mm Roller Tube 5.0M Aluminium"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-AGREY",
+              "description": "Anthracite Grey Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2 AND Choice3",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 4752,
+              "sequence": 1,
+              "choiceId": 66247,
+              "code": "R3041-AG",
+              "description": "System 32 Roller Blind Bracket Covers Anthracite Grey"
+            },
+            {
+              "id": 4753,
+              "sequence": 2,
+              "choiceId": 51163,
+              "code": "NOBKTCOV",
+              "description": "No Bracket Covers"
+            },
+            {
+              "id": 4754,
+              "sequence": 3,
+              "choiceId": 53133,
+              "code": "R3080-32-AG",
+              "description": "Enclosed Bracket Cover 32mm Anthracite Grey"
+            }
+          ]
+        },
+        {
+          "id": 2671,
+          "sequence": 16,
+          "choices": [
+            {
+              "group": "Fixing Option",
+              "code": "FIXING-F",
+              "description": "Face Fix"
+            },
+            {
+              "group": "Barrel Type",
+              "code": "R8021",
+              "description": "32mm Roller Tube 5.0M Aluminium"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-AGREY",
+              "description": "Anthracite Grey Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2 AND Choice3",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 4755,
+              "sequence": 1,
+              "choiceId": 51163,
+              "code": "NOBKTCOV",
+              "description": "No Bracket Covers"
+            },
+            {
+              "id": 4756,
+              "sequence": 2,
+              "choiceId": 66247,
+              "code": "R3041-AG",
+              "description": "System 32 Roller Blind Bracket Covers Anthracite Grey"
+            },
+            {
+              "id": 4757,
+              "sequence": 3,
+              "choiceId": 53133,
+              "code": "R3080-32-AG",
+              "description": "Enclosed Bracket Cover 32mm Anthracite Grey"
+            }
+          ]
+        },
+        {
+          "id": 2672,
+          "sequence": 17,
+          "choices": [
+            {
+              "group": "Fixing Option",
+              "code": "FIXING-T",
+              "description": "Top Fix"
+            },
+            {
+              "group": "Barrel Type",
+              "code": "R8024 (MUST BE BATCH AR)",
+              "description": "40mm Roller Tube 5.0M Double Slot"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-AGREY",
+              "description": "Anthracite Grey Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2 AND Choice3",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 4758,
+              "sequence": 1,
+              "choiceId": 51163,
+              "code": "NOBKTCOV",
+              "description": "No Bracket Covers"
+            },
+            {
+              "id": 4760,
+              "sequence": 2,
+              "choiceId": 66277,
+              "code": "R3042-AG",
+              "description": "System 40 Roller Blind Bracket Covers - Anthracite Grey"
+            },
+            {
+              "id": 4761,
+              "sequence": 3,
+              "choiceId": 53137,
+              "code": "R3080-40-AG",
+              "description": "System 40 Enclosed Bracket Covers Anthracite Grey"
+            }
+          ]
+        },
+        {
+          "id": 2673,
+          "sequence": 18,
+          "choices": [
+            {
+              "group": "Fixing Option",
+              "code": "FIXING-F",
+              "description": "Face Fix"
+            },
+            {
+              "group": "Barrel Type",
+              "code": "R8024 (MUST BE BATCH AR)",
+              "description": "40mm Roller Tube 5.0M Double Slot"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-AGREY",
+              "description": "Anthracite Grey Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2 AND Choice3",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": []
+        },
+        {
+          "id": 2674,
+          "sequence": 19,
+          "choices": [
+            {
+              "group": "Fixing Option",
+              "code": "FIXING-T",
+              "description": "Top Fix"
+            },
+            {
+              "group": "Barrel Type",
+              "code": "R8027",
+              "description": "45mm Roller Tube 5m Triple Slot"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-AGREY",
+              "description": "Anthracite Grey Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2 AND Choice3",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 4762,
+              "sequence": 1,
+              "choiceId": 51163,
+              "code": "NOBKTCOV",
+              "description": "No Bracket Covers"
+            },
+            {
+              "id": 4763,
+              "sequence": 2,
+              "choiceId": 66283,
+              "code": "R3043-GR",
+              "description": "System 45 Roller Blind Bracket Covers Grey"
+            },
+            {
+              "id": 4764,
+              "sequence": 3,
+              "choiceId": 53138,
+              "code": "R3080-45-WH",
+              "description": "Enclosed Bracket Cover 45mm White"
+            }
+          ]
+        },
+        {
+          "id": 2675,
+          "sequence": 20,
+          "choices": [
+            {
+              "group": "Fixing Option",
+              "code": "FIXING-F",
+              "description": "Face Fix"
+            },
+            {
+              "group": "Barrel Type",
+              "code": "R8027",
+              "description": "45mm Roller Tube 5m Triple Slot"
+            },
+            {
+              "group": "Hardware Colour",
+              "code": "H-AGREY",
+              "description": "Anthracite Grey Hardware Colour"
+            }
+          ],
+          "rule": "Choice1 AND Choice2 AND Choice3",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 4765,
+              "sequence": 1,
+              "choiceId": 51163,
+              "code": "NOBKTCOV",
+              "description": "No Bracket Covers"
+            },
+            {
+              "id": 4766,
+              "sequence": 2,
+              "choiceId": 66283,
+              "code": "R3043-GR",
+              "description": "System 45 Roller Blind Bracket Covers Grey"
+            },
+            {
+              "id": 4767,
+              "sequence": 3,
+              "choiceId": 53138,
+              "code": "R3080-45-WH",
+              "description": "Enclosed Bracket Cover 45mm White"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 106,
+      "sequence": 4,
+      "name": "Chain/Cord Tidies",
+      "conditions": [
+        {
+          "id": 321,
+          "sequence": 1,
+          "choices": [
+            {
+              "group": "Fixing Option",
+              "code": "FIXING-T",
+              "description": "Top Fix"
+            }
+          ],
+          "rule": "",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 3382,
+              "sequence": 1,
+              "choiceId": 52284,
+              "code": "8275-WH",
+              "description": "Cord or Chain Tidy Side Fix White"
+            },
+            {
+              "id": 4816,
+              "sequence": 2,
+              "choiceId": 52288,
+              "code": "8277-WH",
+              "description": "Cord or Chain Tidy Face Fix White"
+            },
+            {
+              "id": 611,
+              "sequence": 3,
+              "choiceId": 51176,
+              "code": "NONE-0",
+              "description": "None"
+            }
+          ]
+        },
+        {
+          "id": 322,
+          "sequence": 2,
+          "choices": [
+            {
+              "group": "Fixing Option",
+              "code": "FIXING-F",
+              "description": "Face Fix"
+            }
+          ],
+          "rule": "",
+          "minWidth": 0.0,
+          "maxWidth": 9999999.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 3321,
+              "sequence": 1,
+              "choiceId": 52288,
+              "code": "8277-WH",
+              "description": "Cord or Chain Tidy Face Fix White"
+            },
+            {
+              "id": 4817,
+              "sequence": 2,
+              "choiceId": 52284,
+              "code": "8275-WH",
+              "description": "Cord or Chain Tidy Side Fix White"
+            },
+            {
+              "id": 613,
+              "sequence": 3,
+              "choiceId": 51176,
+              "code": "NONE-0",
+              "description": "None"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 910,
+      "sequence": 1,
+      "name": "Barrel Type",
+      "conditions": [
+        {
+          "id": 2738,
+          "sequence": 1,
+          "choices": [],
+          "rule": "",
+          "minWidth": 0.0,
+          "maxWidth": 2500.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 4878,
+              "sequence": 1,
+              "choiceId": 51172,
+              "code": "R8024 (MUST BE BATCH AR)",
+              "description": "40mm Roller Tube 5.0M Double Slot"
+            },
+            {
+              "id": 4879,
+              "sequence": 2,
+              "choiceId": 51171,
+              "code": "R8021",
+              "description": "32mm Roller Tube 5.0M Aluminium"
+            },
+            {
+              "id": 4880,
+              "sequence": 3,
+              "choiceId": 59378,
+              "code": "R8027",
+              "description": "45mm Roller Tube 5m Triple Slot"
+            }
+          ]
+        },
+        {
+          "id": 2739,
+          "sequence": 2,
+          "choices": [],
+          "rule": "",
+          "minWidth": 2501.0,
+          "maxWidth": 3000.0,
+          "minDrop": 0.0,
+          "maxDrop": 9999999.0,
+          "maxArea": 0.0,
+          "minChainLength": 0.0,
+          "maxChainLength": 9999999.0,
+          "minPanels": 0,
+          "maxPanels": 9999999,
+          "formula": null,
+          "results": [
+            {
+              "id": 4882,
+              "sequence": 1,
+              "choiceId": 59378,
+              "code": "R8027",
+              "description": "45mm Roller Tube 5m Triple Slot"
+            },
+            {
+              "id": 4881,
+              "sequence": 2,
+              "choiceId": 51172,
+              "code": "R8024 (MUST BE BATCH AR)",
+              "description": "40mm Roller Tube 5.0M Double Slot"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -60,6 +60,25 @@ supported options and differences from the native Power Apps grid and Excel.
 
 ## Configuration
 
+### R200S linked-options demo
+
+Run `npm run demo`, then open [R200S demo](http://127.0.0.1:8183/?demo=r200s&fulltab=1).
+The existing ResponsiveGrid/HierarchyGrid components render a read-only Blindata
+snapshot from 17 November 2026: four linked-option rows, 32 nested conditions and
+68 result links. Expand a linked option, then a condition, to see its result choices.
+Name, Type, Code, Order, Details and Results headers retain the normal menus,
+same-header open/close, filtering, sorting and column controls at every level.
+Selection, retained branches, automatic scrolling and full-tab sizing use the
+existing control. Open selected shows a local record's complete text; Reset demo
+clears selection, filters and expanded branches.
+
+The two stored 40 mm Face Fix bracket-cover conditions with no results remain
+visible with zero results and no expansion arrow. Result order is the stored link
+sequence; the demo does not claim to execute Blindata's runtime defaulting engine.
+The snapshot has no connection or write path to Blindata or Dataverse. The existing
+project and large-data demos remain at their original URLs. This demo changes no
+PCF runtime source, manifest, installed solution version or sandbox data.
+
 ### Fill a native form tab
 
 In the form designer, place this subgrid first in a one-column tab and enable
