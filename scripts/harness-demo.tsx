@@ -10,6 +10,8 @@ import { DemoColumnKind, DemoFilterExpression, evaluateDemoFilter, getLocalDateO
 import { DemoRow as Row, DemoScenario, demoScenario, seedDemoRows, indexDemoRows, pageDemoRows } from './demo-data';
 import { checkSelectionCancelled, selectionResult } from '../CMModelDrivenGrid/recordSelection';
 import { R200sDemo } from './r200s-demo';
+import { BlindTypeSetup } from './blindtype-setup';
+import { demoSetupStore } from './blindtype-setup-store';
 import "../CMModelDrivenGrid/css/CMModelDrivenGrid.css";
 
 initializeIcons(undefined, { disableWarnings: true });
@@ -232,4 +234,7 @@ function Demo(): React.ReactElement {
         </Dialog>
     </>;
 }
-ReactDOM.render(new URLSearchParams(window.location.search).get('demo') === 'r200s' ? <R200sDemo /> : <Demo />, document.getElementById("demo-root"));
+const demoParameters = new URLSearchParams(window.location.search);
+ReactDOM.render(demoParameters.get('demo') === 'r200s'
+    ? demoParameters.get('setup') === '1' ? <BlindTypeSetup store={demoSetupStore()}/> : <R200sDemo />
+    : <Demo />, document.getElementById("demo-root"));

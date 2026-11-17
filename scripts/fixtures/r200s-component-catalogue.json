@@ -1,0 +1,718 @@
+{
+  "version": 1,
+  "blindType": {
+    "id": 461,
+    "code": "R200S",
+    "name": "R200S - Standard Roller Blind"
+  },
+  "groups": [
+    {
+      "id": "259",
+      "name": "Hardware Colour",
+      "order": 0,
+      "hidden": false,
+      "freeText": false,
+      "components": [
+        {
+          "id": "52752",
+          "code": "H-WHITE",
+          "name": "White Hardware Colour",
+          "isDefault": true,
+          "available": true
+        },
+        {
+          "id": "53229",
+          "code": "H-AGREY",
+          "name": "Anthracite Grey Hardware Colour",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "52753",
+          "code": "H-BLACK",
+          "name": "Black Hardware Colour",
+          "isDefault": false,
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "305",
+      "name": "Barrel Type",
+      "order": 1,
+      "hidden": false,
+      "freeText": true,
+      "components": [
+        {
+          "id": "51171",
+          "code": "R8021",
+          "name": "32mm Roller Tube 5.0M Aluminium",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "51172",
+          "code": "R8024 (MUST BE BATCH AR)",
+          "name": "40mm Roller Tube 5.0M Double Slot",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "59378",
+          "code": "R8027",
+          "name": "45mm Roller Tube 5m Triple Slot",
+          "isDefault": false,
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "342",
+      "name": "Headrail",
+      "order": 1,
+      "hidden": false,
+      "freeText": true,
+      "components": []
+    },
+    {
+      "id": "147",
+      "name": "Mechanism",
+      "order": 2,
+      "hidden": true,
+      "freeText": true,
+      "components": [
+        {
+          "id": "72156",
+          "code": "R2993-40-WH",
+          "name": "40mm Grip Fit Motor Pack",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "57843",
+          "code": "R3015-SL1-AG",
+          "name": "System 32 Side Control Slide-Lock End Set with Metal Brackets - Medium - Blue Pin - Anthracite Grey",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "52325",
+          "code": "R3015-SL1-BK",
+          "name": "System 32 Side Control Slide-Lock End Set with Metal Brackets - Medium - Blue Pin - Black",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "52327",
+          "code": "R3015-SL1-WH",
+          "name": "System 32 Side Control Slide-Lock End Set with Metal Brackets - Medium - Blue Pin - White",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "61938",
+          "code": "R3035-SL1-BK",
+          "name": "End Set 45 Slidelock Std Pin Black",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "62077",
+          "code": "R3035-SL1-GR",
+          "name": "End Set 45 Slidelock Std Pin Grey",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "52338",
+          "code": "R3035-SL1-WH",
+          "name": "End Set 45 Slidelock Std Pin White",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "59366",
+          "code": "R3050-SL1-ANT",
+          "name": "System 40 Slide-Lock (for R8030 back bar/RM2106 open cassette) - Anthracite Grey",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "52343",
+          "code": "R3050-SL1-BK",
+          "name": "System 40 Slide-Lock (for R8030 back bar/RM2106 open cassette) - Black",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "52344",
+          "code": "R3050-SL1-WH",
+          "name": "System 40 Slide-Lock (for R8030 back bar/RM2106 open cassette) - White",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "71085",
+          "code": "R3055",
+          "name": "End Set 45 White for use with Back Bar",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "72220",
+          "code": "R3090-32-WH",
+          "name": "END SET GRIP FIT 32MM CHAIN CONTROL",
+          "isDefault": false,
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "333",
+      "name": "Fixing Option",
+      "order": 3,
+      "hidden": false,
+      "freeText": true,
+      "components": [
+        {
+          "id": "51159",
+          "code": "FIXING-T",
+          "name": "Top Fix",
+          "isDefault": true,
+          "available": true
+        },
+        {
+          "id": "51160",
+          "code": "FIXING-F",
+          "name": "Face Fix",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "64668",
+          "code": "FIXING-S",
+          "name": "Side Fix",
+          "isDefault": false,
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "183",
+      "name": "Bracket Cover",
+      "order": 4,
+      "hidden": false,
+      "freeText": true,
+      "components": [
+        {
+          "id": "51163",
+          "code": "NOBKTCOV",
+          "name": "No Bracket Covers",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "66247",
+          "code": "R3041-AG",
+          "name": "System 32 Roller Blind Bracket Covers Anthracite Grey",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "66246",
+          "code": "R3041-BL",
+          "name": "System 32 Roller Blind Bracket Covers Black",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "52339",
+          "code": "R3041-WH",
+          "name": "System 32 Roller Blind Bracket Covers White",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "66277",
+          "code": "R3042-AG",
+          "name": "System 40 Roller Blind Bracket Covers - Anthracite Grey",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "64436",
+          "code": "R3042-BK",
+          "name": "System 40 Roller Blind Bracket Covers - Black",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "52340",
+          "code": "R3042-WH",
+          "name": "System 40 Roller Blind Bracket Covers White",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "66284",
+          "code": "R3043-BL",
+          "name": "System 45 Roller Blind Bracket Covers Black",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "66283",
+          "code": "R3043-GR",
+          "name": "System 45 Roller Blind Bracket Covers Grey",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "52341",
+          "code": "R3043-WH",
+          "name": "System 45 Roller Blind Bracket Covers White",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "53133",
+          "code": "R3080-32-AG",
+          "name": "Enclosed Bracket Cover 32mm Anthracite Grey",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "53132",
+          "code": "R3080-32-BL",
+          "name": "Enclosed Bracket Cover 32mm Black",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "53131",
+          "code": "R3080-32-WH",
+          "name": "Enclosed Bracket Cover 32mm White",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "53137",
+          "code": "R3080-40-AG",
+          "name": "System 40 Enclosed Bracket Covers Anthracite Grey",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "66278",
+          "code": "R3080-40-BBAR-WH",
+          "name": "System 40 Enclosed Bracket Covers Back Bar White",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "53136",
+          "code": "R3080-40-BL",
+          "name": "System 40 Enclosed Bracket Covers Black",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "53135",
+          "code": "R3080-40-WH",
+          "name": "Enclosed Bracket Cover 40mm White",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "53139",
+          "code": "R3080-45-BL",
+          "name": "Enclosed Bracket Cover 45mm Black",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "53138",
+          "code": "R3080-45-WH",
+          "name": "Enclosed Bracket Cover 45mm White",
+          "isDefault": false,
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "138",
+      "name": "Chain",
+      "order": 5,
+      "hidden": false,
+      "freeText": false,
+      "components": [
+        {
+          "id": "51155",
+          "code": "R3420-BCP",
+          "name": "Chain No10 - Brass Chrome Plated",
+          "isDefault": true,
+          "available": true
+        },
+        {
+          "id": "66335",
+          "code": "R3420-GO",
+          "name": "Chain No10 - Gold",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "66336",
+          "code": "R3420-S/N",
+          "name": "Chain No10 - Silver/Nickel",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "52794",
+          "code": "R3420-SS",
+          "name": "Chain No10 - Stainless Steel",
+          "isDefault": false,
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "239",
+      "name": "Control Side",
+      "order": 6,
+      "hidden": false,
+      "freeText": true,
+      "components": [
+        {
+          "id": "51157",
+          "code": "CONTROL-L",
+          "name": "Left Side Control",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "51158",
+          "code": "CONTROL-R",
+          "name": "Right Side Control",
+          "isDefault": false,
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "312",
+      "name": "Chain Connectors",
+      "order": 7,
+      "hidden": false,
+      "freeText": true,
+      "components": [
+        {
+          "id": "51179",
+          "code": "NONE-CC",
+          "name": "None - Continuous Chain",
+          "isDefault": true,
+          "available": true
+        },
+        {
+          "id": "66343",
+          "code": "8325-BE",
+          "name": "Connector No10 Plastic Beige",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "62102",
+          "code": "8325-BL",
+          "name": "Connector No10 Plastic Black",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "66238",
+          "code": "8325-BR",
+          "name": "Connector No10 Plastic Brown",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "66237",
+          "code": "8325-SG",
+          "name": "Connector No10 Plastic Grey",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "66236",
+          "code": "8325-WH",
+          "name": "Connector No10 Plastic White",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "70985",
+          "code": "933440",
+          "name": "Plastic Breakaway Chain Connector",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "51177",
+          "code": "R3430",
+          "name": "Connector No10 Metal",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "53038",
+          "code": "R3435",
+          "name": "Easybreak No. 10 Connector - Metal",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "52374",
+          "code": "R3440-LG",
+          "name": "Breakaway Grey No. 10 Chain Connector",
+          "isDefault": false,
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "134",
+      "name": "Bottom Bar",
+      "order": 8,
+      "hidden": false,
+      "freeText": true,
+      "components": [
+        {
+          "id": "71431",
+          "code": "94255W",
+          "name": "Welded Pocket Plastic Lathe White",
+          "isDefault": true,
+          "available": true
+        },
+        {
+          "id": "65973",
+          "code": "R8121",
+          "name": "Bottom Bar, Aluminium",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "49627",
+          "code": "R8122-SL",
+          "name": "Aluminium Round Bottom Bar Silver",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "49625",
+          "code": "R8122-WH",
+          "name": "Aluminium Round Bottom Bar White",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "58135",
+          "code": "R8128-AG",
+          "name": "Gemini Bottom Bar Anthracite Grey",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "57975",
+          "code": "R8128-CH",
+          "name": "Gemini Bottom Bar Chrome",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "59312",
+          "code": "R8128-WH",
+          "name": "Gemini Bottom Bar White",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "49624",
+          "code": "R8300-PVC",
+          "name": "Plastic White Bottom Bar",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "66333",
+          "code": "R8300-PVC-BE",
+          "name": "Plastic Beige Bottom Bar",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "66334",
+          "code": "R8300-PVC-CL",
+          "name": "Plastic Clear Bottom Bar",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "59675",
+          "code": "RC618",
+          "name": "Elliptical Lathe White 22.5mm 4m Length",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "59676",
+          "code": "RC627",
+          "name": "Clear Plastic Lathe 4m Lengths",
+          "isDefault": false,
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "307",
+      "name": "Chain/Cord Tidies",
+      "order": 9,
+      "hidden": false,
+      "freeText": true,
+      "components": [
+        {
+          "id": "52284",
+          "code": "8275-WH",
+          "name": "Cord or Chain Tidy Side Fix White",
+          "isDefault": true,
+          "available": true
+        },
+        {
+          "id": "52283",
+          "code": "8275-BK",
+          "name": "Cord or Chain Tidy Black",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "52288",
+          "code": "8277-WH",
+          "name": "Cord or Chain Tidy Face Fix White",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "52192",
+          "code": "CHTIDYNO",
+          "name": "None",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "65651",
+          "code": "SA-CLEAT-D",
+          "name": "Easy Cleat D-Clip (Face-Fix Self Adhesive)",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "65634",
+          "code": "SA-CLEAT-P",
+          "name": "Easy Cleat P-Clip (Side-Fix Self Adhesive)",
+          "isDefault": false,
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "309",
+      "name": "Roll Direction",
+      "order": 10,
+      "hidden": false,
+      "freeText": true,
+      "components": [
+        {
+          "id": "52734",
+          "code": "STD",
+          "name": "Standard Roll",
+          "isDefault": true,
+          "available": true
+        },
+        {
+          "id": "52733",
+          "code": "REV",
+          "name": "Reverse Roll",
+          "isDefault": false,
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "306",
+      "name": "Back Bar",
+      "order": 11,
+      "hidden": false,
+      "freeText": false,
+      "components": [
+        {
+          "id": "70982",
+          "code": "BB/NR",
+          "name": "No Back Bar",
+          "isDefault": true,
+          "available": true
+        },
+        {
+          "id": "49632",
+          "code": "938031W",
+          "name": "Aluminium Back Bar - White",
+          "isDefault": false,
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "311",
+      "name": "Branded Labels",
+      "order": 12,
+      "hidden": true,
+      "freeText": false,
+      "components": [
+        {
+          "id": "53108",
+          "code": "LABEL-C/S",
+          "name": "Capricorn Small Branded Dome Label",
+          "isDefault": true,
+          "available": true
+        },
+        {
+          "id": "51164",
+          "code": "LABEL-C",
+          "name": "Capricorn Large Branded Dome Label",
+          "isDefault": false,
+          "available": true
+        },
+        {
+          "id": "51165",
+          "code": "LABEL-N",
+          "name": "None",
+          "isDefault": false,
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "366",
+      "name": "Production Class",
+      "order": 13,
+      "hidden": true,
+      "freeText": false,
+      "components": [
+        {
+          "id": "52599",
+          "code": "PROD-A",
+          "name": "Production Category A",
+          "isDefault": false,
+          "available": true
+        }
+      ]
+    }
+  ]
+}

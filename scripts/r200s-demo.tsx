@@ -52,6 +52,7 @@ export function R200sDemo(): React.ReactElement {
             <div className="cm-child-toolbar" role="toolbar" aria-label="R200S demo commands">
                 <span role="status">{selectedIds.length ? `${selectedIds.length} selected` : '4 linked options · 32 conditions · 68 results'} · Read-only demo · 17 Nov 2026</span>
                 <div className="cm-child-commands">
+                    <a href="?demo=r200s&setup=1">Set up blind type</a>
                     <button type="button" disabled={selectedIds.length !== 1} onClick={() => setOpenRow(byId.get(selectedIds[0]))}>Open selected</button>
                     <button type="button" onClick={reset}>Reset demo</button>
                 </div>

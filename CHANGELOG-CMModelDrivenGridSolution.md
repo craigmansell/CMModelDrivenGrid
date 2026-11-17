@@ -1,5 +1,12 @@
 # CMModelDrivenGridSolution changelog
 
+## Blind-type setup editor — 2026-11-17
+
+- Add option setup and linked-option authoring around the unchanged ResponsiveGrid/HierarchyGrid components. Component pickers use the selected blind type and option group, with defaults, enabled/visible/free-text settings, ordered conditions/results and size constraints. Preserve both legacy unavailable results without offering them for new selections.
+- Save versioned setup documents to dedicated Item fields through Dataverse with current-catalogue validation and optimistic concurrency. The local preview uses an isolated memory store. No write path to Blindata. Installed the separate unmanaged `CMBlindTypeSetup` 1.0.0.0 in sandbox; the general PCF remains 1.0.122 / 1.0.101.0.
+- Full local suite, scoped TypeScript and the authoritative editor build pass. Eight signed-in checks pass: component scope, option default, condition editing, result editing, hierarchy, all three header toggles, saved/reloaded state and stale-save rejection. Temporary rules/results were removed; the demo retains 15 options, four linked groups, 32 conditions and 68 result links, with the white System 40 mechanism set as its example default.
+- Fresh rollback and exact evidence: CrmPackage `outputs/deployment-backups/blindtype-setup-sandbox-20261117-093826/`. The original R200S record, existing forms/views, release identity and generic PCF are unchanged. Targeted publication only; concurrent import/pending-resource checks stopped intermediate attempts until clear. Final unmanaged package SHA-256 `A55219DD8699BE5E251AA8CE27F1EC679DE817D7DB9EC3316D59A3ED17A7DE62`. Screenshot capture timed out; hashed signed-in AX/DOM and independent Dataverse readback establish functional acceptance, without a pixel-verification claim. See `BLIND-TYPE-SETUP.md` for scope and access.
+
 ## Local R200S linked-options demo — 2026-11-17
 
 - Add `?demo=r200s&fulltab=1` to the existing local harness, using the same ResponsiveGrid and HierarchyGrid as the installed control. Expand four linked-option groups into 32 conditions and 68 result links from the read-only 17 November Blindata snapshot. Keep both empty result rules visible without inventing children.

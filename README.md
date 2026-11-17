@@ -62,6 +62,12 @@ supported options and differences from the native Power Apps grid and Excel.
 
 ### R200S linked-options demo
 
+The editable setup preview is at
+[R200S setup](http://127.0.0.1:8183/?demo=r200s&setup=1). It adds scoped component
+selection, option defaults/settings and linked-option condition/result editors
+around the existing grid. The Dataverse version saves a configuration document
+on a dedicated sandbox Item. See [editing, data scope and deployment](BLIND-TYPE-SETUP.md).
+
 Run `npm run demo`, then open [R200S demo](http://127.0.0.1:8183/?demo=r200s&fulltab=1).
 The existing ResponsiveGrid/HierarchyGrid components render a read-only Blindata
 snapshot from 17 November 2026: four linked-option rows, 32 nested conditions and
