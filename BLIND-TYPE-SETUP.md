@@ -1,8 +1,8 @@
 # Blind type setup
 
-Native release status: prepared and locally validated; final manifest publication
-and signed-in native acceptance are pending. The existing standalone 1.0.0.1
-bookmark has not been redirected yet.
+Native release status: published in sandbox; signed-in native acceptance awaits
+command-metadata/cache refresh in Chrome. The existing standalone 1.0.0.1 bookmark
+has not been redirected yet.
 
 The native editor uses the existing ResponsiveGrid and HierarchyGrid inside a
 Dynamics dataset control. It preserves hierarchy arrows, repeated header clicks,

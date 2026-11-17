@@ -63,6 +63,44 @@ export async function testDirectSetupSaves(container: HTMLElement): Promise<void
     ReactDOM.unmountComponentAtNode(container);
     console.log('Direct setup saves passed: non-modal forms, immediate persistence, pending/double-save protection, retained errors, scoped editable component row and Cancel without writes.');
     await testNativeCommands(container);
+    await testNativePcfBinding(container);
+}
+
+async function testNativePcfBinding(container:HTMLElement):Promise<void> {
+    const oldCss=require.extensions['.css'];require.extensions['.css']=()=>undefined;
+    const {CMBlindTypeSetupGrid}=require('./native-blindtype-control') as typeof import('./native-blindtype-control');
+    if(oldCss)require.extensions['.css']=oldCss;else delete require.extensions['.css'];
+    const reactDom=require('react-dom') as typeof import('react-dom');
+    const originalRender=reactDom.render,originalWindow=globalThis.window,originalFetch=globalThis.fetch;
+    const itemId='25a03e63-9b28-472f-8bd6-71586867a157',nativeId='11111111-2222-4333-8444-555555555555';
+    const initial=initialR200sSetup();let latest:import('./blindtype-native-commands').SetupCommandState|undefined;
+    type BoundProps={store:SetupStore;nativeHost:import('./blindtype-native-commands').NativeSetupHost};
+    let props:BoundProps|undefined;const captured=():BoundProps|undefined=>props;
+    let filter:unknown,selected:string[]=[];let reads=0;
+    const control=new CMBlindTypeSetupGrid();
+    const records={loading:false,error:false,records:{},sortedRecordIds:[] as string[],sorting:[],getTargetEntityType:()=> 'cm_blindtypesetuprow',filtering:{getFilter:()=>undefined,setFilter:(value:unknown)=>{filter=value;}},paging:{hasNextPage:false,hasPreviousPage:false,setPageSize:()=>undefined},setSelectedRecordIds:(ids:string[])=>{selected=ids;},getSelectedRecordIds:()=>selected,refresh:()=>{queueMicrotask(()=>control.updateView(context as never));}};
+    const context={parameters:{records},updatedProperties:['records'],mode:{trackContainerResize:()=>undefined,isControlDisabled:false,allocatedWidth:1100,allocatedHeight:600},events:{SetupCommandsChanged:(state:import('./blindtype-native-commands').SetupCommandState)=>{latest=state;}},webAPI:{retrieveMultipleRecords:async(name:string,query:string)=>{assert.equal(name,'cm_blindtypesetuprow');assert.ok(query.includes(`_cm_blindtype_value eq ${itemId}`));return {entities:[{cm_sourcekey:'option-147',cm_blindtypesetuprowid:nativeId}]};}}};
+    try{
+        // Render is intercepted to exercise the PCF/public host protocol independently of UI probes.
+        (reactDom as unknown as {render:typeof originalRender}).render=((element:React.ReactElement)=>{if(element.type!== 'div')props=element.props;return null;}) as unknown as typeof originalRender;
+        globalThis.window={location:{origin:'https://capricornsandbox.crm4.dynamics.com'}} as unknown as Window & typeof globalThis;
+        globalThis.fetch=(async(url:RequestInfo|URL)=>{reads++;assert.ok(String(url).includes(`/cm_items(${itemId})`));return {ok:true,json:async()=>({cm_itemid:itemId,cm_name:'R200S','@odata.etag':'1',cm_blindtypecataloguejson:JSON.stringify(initial.catalogue),cm_blindtypesetupjson:JSON.stringify(initial.document)})} as Response;}) as typeof fetch;
+        control.init(context as never,()=>undefined,{},container as HTMLDivElement);control.updateView(context as never);
+        assert.equal(reads,0,'An empty dataset must not guess a blind type or read a different record.');
+        assert.ok(latest?.bindRecord&&!latest.ready,'The initial event must request the actual form record while commands remain locked.');
+        latest!.bindRecord!('foreign');assert.equal(props,undefined,'Invalid form IDs must not initialize the store.');
+        latest!.bindRecord!(itemId);await Promise.resolve();await Promise.resolve();
+        const bound=captured();assert.ok(bound);assert.equal((await bound.store.load()).id,itemId);
+        assert.ok(JSON.stringify(filter).includes('cm_blindtype')&&JSON.stringify(filter).includes(itemId),'The public dataset filter must retain explicit Item scope.');
+        records.records={[nativeId]:{getValue:()=>[{id:itemId}],getRecordId:()=>nativeId}} as never;records.sortedRecordIds=[nativeId];control.updateView(context as never);
+        await bound.nativeHost.select(['option-147'],[]);assert.deepEqual(selected,[nativeId],'Command selection must use the actual Dataverse row GUID.');
+        bound.nativeHost.publish({ready:true,selected:[],canNew:true,canEdit:false,canDelete:false,canActivate:false,canDeactivate:false,canRefresh:true,execute:()=>undefined});
+        assert.equal(latest!.canNew,true);context.mode.isControlDisabled=true;control.updateView(context as never);assert.equal(latest!.canNew,false,'Disabled controls must revoke native capabilities.');
+        control.destroy();assert.equal(latest!.ready,false,'Destroy must revoke cached command state.');
+    }finally{
+        (reactDom as unknown as {render:typeof originalRender}).render=originalRender;globalThis.window=originalWindow;globalThis.fetch=originalFetch;
+    }
+    console.log('Native PCF binding passed: empty-dataset handshake, actual form Item scope, real row GUID selection and disabled/destroyed command revocation.');
 }
 
 async function testNativeCommands(container: HTMLElement): Promise<void> {
