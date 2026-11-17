@@ -6,7 +6,7 @@ export interface Catalogue {
     version: 1; blindType: {id: number; code: string; name: string}; groups: SetupGroup[];
     legacyResults?: {conditionId: string; resultId: string; component: SetupComponent; groupId: string}[];
 }
-export interface OptionSetup {groupId: string; order: number; enabled: boolean; hidden: boolean; freeText: boolean; componentIds: string[]; defaultId: string | null}
+export interface OptionSetup {groupId: string; name?: string; sourceGroupId?: string; order: number; enabled: boolean; hidden: boolean; freeText: boolean; componentIds: string[]; defaultId: string | null}
 export interface SetupResult {id: string; componentId: string; order: number}
 export interface SetupCondition {
     id: string; order: number; mode: 'all' | 'any'; tests: {groupId: string; componentId: string}[];
@@ -15,7 +15,7 @@ export interface SetupCondition {
     minPanels: number; maxPanels: number | null; formula: string | null; results: SetupResult[];
 }
 export interface LinkedSetup {id: string; groupId: string; order: number; conditions: SetupCondition[]}
-export interface SetupDocument {version: 1; blindTypeCode: string; options: OptionSetup[]; links: LinkedSetup[]}
+export interface SetupDocument {version: 1 | 2; blindTypeCode: string; options: OptionSetup[]; links: LinkedSetup[]}
 export interface SetupRow {
     id: string; parentId?: string; name: string; kind: 'Option' | 'Component' | 'Linked option' | 'Condition' | 'Result';
     code: string; order: number; details: string; count: number | null; groupId: string;
@@ -28,13 +28,41 @@ export function groupFor(catalogue: Catalogue, id: string): SetupGroup {
     if (!group) throw new Error('This option is not available for the selected blind type.');
     return group;
 }
+export const isCustomOption = (option: OptionSetup): boolean => option.groupId.startsWith('custom-');
+export function optionGroup(catalogue: Catalogue, document: SetupDocument, id: string): SetupGroup {
+    const option = document.options.find(item => item.groupId === id);
+    if (!option) throw new Error('This option is not configured for the selected blind type.');
+    const source = groupFor(catalogue, option.sourceGroupId ?? option.groupId);
+    return {...source, id: option.groupId, name: option.name ?? source.name, order: option.order};
+}
+export function withOption(catalogue: Catalogue, document: SetupDocument, option: OptionSetup): SetupDocument {
+    const next = clone(document);
+    const value = clone(option);
+    if (isCustomOption(value)) {value.name = value.name?.trim(); next.version = 2;}
+    const index = next.options.findIndex(item => item.groupId === value.groupId);
+    if (index < 0) next.options.push(value); else next.options[index] = value;
+    validateSetup(catalogue, next);
+    return next;
+}
+export function withoutOption(catalogue: Catalogue, document: SetupDocument, groupId: string): SetupDocument {
+    const option = document.options.find(item => item.groupId === groupId);
+    if (!option || !isCustomOption(option)) throw new Error('Catalogue options can be disabled, rather than removed.');
+    if (document.links.some(link => link.groupId === groupId || link.conditions.some(condition => condition.tests.some(test => test.groupId === groupId)))) {
+        throw new Error('This option is used by linked rules. Remove those references before removing the option.');
+    }
+    const next = clone(document);
+    next.options = next.options.filter(item => item.groupId !== groupId);
+    if (!next.options.some(isCustomOption)) next.version = 1;
+    validateSetup(catalogue, next);
+    return next;
+}
 export function availableComponents(catalogue: Catalogue, document: SetupDocument, groupId: string): SetupComponent[] {
     const option = document.options.find(item => item.groupId === groupId);
     if (!option?.enabled) return [];
-    return groupFor(catalogue, groupId).components.filter(component => component.available && option.componentIds.includes(component.id));
+    return optionGroup(catalogue, document, groupId).components.filter(component => component.available && option.componentIds.includes(component.id));
 }
-export function resultComponent(catalogue: Catalogue, groupId: string, conditionId: string, result: SetupResult): SetupComponent {
-    return groupFor(catalogue, groupId).components.find(component => component.id === result.componentId)
+export function resultComponent(catalogue: Catalogue, document: SetupDocument, groupId: string, conditionId: string, result: SetupResult): SetupComponent {
+    return optionGroup(catalogue, document, groupId).components.find(component => component.id === result.componentId)
         ?? catalogue.legacyResults?.find(item => item.groupId === groupId && item.conditionId === conditionId && item.resultId === result.id && item.component.id === result.componentId)?.component
         ?? {id: result.componentId, code: '', name: 'Unavailable component', available: false};
 }
@@ -70,15 +98,30 @@ export function initialR200sSetup(): {catalogue: Catalogue; document: SetupDocum
 }
 
 export function validateSetup(catalogue: Catalogue, document: SetupDocument): void {
-    if (catalogue.version !== 1 || document.version !== 1 || catalogue.blindType.code !== document.blindTypeCode) throw new Error('The setup belongs to a different blind type or format.');
-    if (!Array.isArray(document.options) || !Array.isArray(document.links) || document.options.length !== catalogue.groups.length) throw new Error('The blind-type option list is incomplete.');
+    if (catalogue.version !== 1 || ![1, 2].includes(document.version) || catalogue.blindType.code !== document.blindTypeCode) throw new Error('The setup belongs to a different blind type or format.');
+    if (!Array.isArray(document.options) || !Array.isArray(document.links) || catalogue.groups.some(group => !document.options.some(option => option.groupId === group.id))) throw new Error('The blind-type option list is incomplete.');
+    if (document.options.length > 500) throw new Error('A blind type can contain at most 500 options.');
     const seen = new Set<string>();
     const unique = (id: string): void => {if (!id || typeof id !== 'string' || id.length > 100 || seen.has(id)) throw new Error('The setup contains a missing or duplicate identifier.'); seen.add(id);};
     const position = (value: number): void => {if (!Number.isInteger(value) || value < 0 || value > 100000) throw new Error('Order must be a whole number between 0 and 100,000.');};
     const optionMap = new Map<string, OptionSetup>();
+    const names = new Set<string>();
     for (const option of document.options) {
-        const group = groupFor(catalogue, option.groupId); unique(`option:${option.groupId}`); position(option.order);
+        if (typeof option.groupId !== 'string') throw new Error('The option identifier is invalid.');
+        unique(`option:${option.groupId}`); position(option.order);
+        const original = catalogue.groups.find(group => group.id === option.groupId);
+        if (!original) {
+            if (document.version !== 2 || !/^custom-[a-z0-9-]{1,80}$/i.test(option.groupId) || typeof option.sourceGroupId !== 'string') throw new Error('A new option must use a component type available for this blind type.');
+            if (typeof option.name !== 'string' || !option.name.trim() || option.name.length > 100 || option.name !== option.name.trim()) throw new Error('Enter an option name of 1–100 characters.');
+        } else if (option.sourceGroupId !== undefined || option.name !== undefined) {
+            throw new Error('The original catalogue option identity cannot be changed.');
+        }
+        const group = optionGroup(catalogue, document, option.groupId);
+        const key = group.name.normalize('NFKC').toLocaleLowerCase('en-GB');
+        if (names.has(key)) throw new Error(`An option named ${group.name} already exists. Choose a different name.`);
+        names.add(key);
         if (typeof option.enabled !== 'boolean' || typeof option.hidden !== 'boolean' || typeof option.freeText !== 'boolean' || !Array.isArray(option.componentIds)) throw new Error('Invalid option settings.');
+        if (!original && !option.componentIds.length) throw new Error(`Choose at least one component available for ${catalogue.blindType.code}.`);
         if (new Set(option.componentIds).size !== option.componentIds.length || option.componentIds.some(id => !group.components.some(component => component.id === id && component.available))) throw new Error(`${group.name}: select only components available for ${catalogue.blindType.code}.`);
         if (option.defaultId !== null && !option.componentIds.includes(option.defaultId)) throw new Error(`${group.name}: the default component must be in its selected components.`);
         optionMap.set(option.groupId, option);
@@ -87,7 +130,7 @@ export function validateSetup(catalogue: Catalogue, document: SetupDocument): vo
     const edges = new Map<string, Set<string>>();
     const usable = (groupId: string, id: string): boolean => !!optionMap.get(groupId)?.enabled && availableComponents(catalogue, document, groupId).some(component => component.id === id);
     for (const link of document.links) {
-        unique(`link:${link.id}`); position(link.order); const group = groupFor(catalogue, link.groupId);
+        unique(`link:${link.id}`); position(link.order); const group = optionGroup(catalogue, document, link.groupId);
         if (targets.has(link.groupId)) throw new Error(`There is already a linked option for ${group.name}.`);
         targets.add(link.groupId);
         if (!optionMap.get(link.groupId)?.enabled || !Array.isArray(link.conditions)) throw new Error(`${group.name}: enable the option before linking it.`);
@@ -124,24 +167,24 @@ export function validateSetup(catalogue: Catalogue, document: SetupDocument): vo
 export function setupRows(catalogue: Catalogue, document: SetupDocument, mode: 'options' | 'links'): SetupRow[] {
     const rows: SetupRow[] = [];
     if (mode === 'options') for (const option of ordered(document.options)) {
-        const group = groupFor(catalogue, option.groupId); const id = `option-${group.id}`;
+        const group = optionGroup(catalogue, document, option.groupId); const id = `option-${group.id}`;
         rows.push({id, groupId: group.id, name: group.name, kind: 'Option', code: '', order: option.order,
-            details: [option.enabled ? 'Enabled' : 'Disabled', option.hidden ? 'Hidden' : '', option.freeText ? 'Free text allowed' : ''].filter(Boolean).join(' · '), count: option.componentIds.length});
+            details: [option.enabled ? 'Enabled' : 'Disabled', option.hidden ? 'Hidden' : '', option.freeText ? 'Free text allowed' : '', isCustomOption(option) ? `Component type: ${groupFor(catalogue, option.sourceGroupId!).name}` : ''].filter(Boolean).join(' · '), count: option.componentIds.length});
         for (const component of group.components.filter(item => option.componentIds.includes(item.id))) rows.push({id: `component-${group.id}-${component.id}`, parentId: id, groupId: group.id, componentId: component.id,
             name: component.name, kind: 'Component', code: component.code, order: 0, details: component.id === option.defaultId ? 'Default component' : '', count: null});
     }
     else for (const link of ordered(document.links)) {
-        const group = groupFor(catalogue, link.groupId); const id = `link-${link.id}`;
+        const group = optionGroup(catalogue, document, link.groupId); const id = `link-${link.id}`;
         rows.push({id, linkId: link.id, groupId: group.id, name: group.name, kind: 'Linked option', code: '', order: link.order, details: `${link.conditions.length} conditions`, count: link.conditions.reduce((sum, item) => sum + item.results.length, 0)});
         for (const condition of ordered(link.conditions)) {
             const conditionId = `condition-${condition.id}`;
-            const tests = condition.tests.map(test => groupFor(catalogue, test.groupId).components.find(component => component.id === test.componentId)!.name);
+            const tests = condition.tests.map(test => optionGroup(catalogue, document, test.groupId).components.find(component => component.id === test.componentId)!.name);
             const width = `Width ${condition.minWidth.toLocaleString('en-GB')}–${condition.maxWidth?.toLocaleString('en-GB') ?? 'any'} mm`;
             const limits = [condition.minWidth || condition.maxWidth !== null ? width : '', condition.minDrop || condition.maxDrop !== null ? `Drop ${condition.minDrop}–${condition.maxDrop ?? 'any'} mm` : ''].filter(Boolean).join(' · ');
             rows.push({id: conditionId, parentId: id, linkId: link.id, conditionId: condition.id, groupId: group.id, name: tests.join(condition.mode === 'all' ? ' + ' : ' OR ') || width,
                 kind: 'Condition', code: '', order: condition.order, details: [condition.results.length ? '' : 'No results configured', limits].filter(Boolean).join(' · '), count: condition.results.length});
             for (const result of ordered(condition.results)) {
-                const component = resultComponent(catalogue, group.id, condition.id, result);
+                const component = resultComponent(catalogue, document, group.id, condition.id, result);
                 rows.push({id: `result-${result.id}`, parentId: conditionId, linkId: link.id, conditionId: condition.id, resultId: result.id, groupId: group.id, componentId: component.id,
                     name: component.name, kind: 'Result', code: component.code, order: result.order, details: component.available ? '' : 'Existing result: unavailable for new selections', count: null});
             }

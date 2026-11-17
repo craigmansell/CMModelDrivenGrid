@@ -7,6 +7,12 @@ manifest changes are needed.
 
 ## Editing
 
+- **Add option:** in Options, choose **Add option**, enter a unique name and
+  select a component type. Tick the components available for that blind type,
+  choose an optional default, then **Apply to draft** and **Save configuration**.
+  New options have independent component selections and can be linked targets
+  or condition sources. Remove an unused custom option with **Remove option**;
+  references must be removed first. Original catalogue options can be disabled.
 - **Options:** expand a group to inspect its components. Select a group or
   component and choose **Edit selected** to set its allowed components, default,
   order, enabled/visible status and free-text setting. **Set as default** is a
@@ -26,6 +32,12 @@ until those references are changed. Conditions cannot create dependency cycles,
 invalid size ranges, duplicate results or references to disabled source options.
 
 ## Data and scope
+
+Existing documents remain format 1. Creating a custom option uses format 2 with
+a stable custom identifier, name and catalogue component-type reference. Removing
+the last custom option returns to format 1. Format 2 requires editor 1.0.0.1 or
+later. Before rolling back the editor, preserve later data and reconcile format 2
+documents; restoring old resource bytes alone cannot make old code read new data.
 
 Dedicated Item fields `cm_blindtypecataloguejson` and `cm_blindtypesetupjson` hold
 versioned catalogue and configuration documents. The catalogue is administrator
@@ -63,7 +75,24 @@ and cannot be selected for a new result. No Blindata or SQL writes are performed
   Dynamics environment. This can also be embedded as a web resource in an Item
   form with the supported record-context parameter; existing forms are untouched.
 
-## Accepted sandbox release
+## Accepted Add option update
+
+Unmanaged `CMBlindTypeSetup` 1.0.0.1 updates the existing three resources and
+solution version. The full local suite, scoped TypeScript and resource build
+pass. Signed-in creation, scoped components/default, reload persistence, custom
+linked-option/condition/result authoring, arrows and all nested header toggles
+pass. Independent readback verifies preservation of the previous configuration.
+Temporary test entries are removed. No generic PCF, schema or existing form/view
+changes. Exact rollback and acceptance evidence are in CrmPackage
+`outputs/deployment-backups/blindtype-add-option-sandbox-20261117-103516/`.
+Screenshot capture timed out; signed-in AX/DOM and independent readback establish
+functional acceptance. The source and deployment branches are
+`codex/blind-type-add-option-20261117` in their respective repositories.
+
+Final unmanaged 1.0.0.1 SHA-256:
+`B9159867F9D764301E25B87A47C54C55B1F899BE91A279DD16AFA85FD2C9F550`.
+
+## Initial sandbox release
 
 Unmanaged solution `CMBlindTypeSetup` 1.0.0.0 is installed. All eight signed-in
 checks pass, including real condition/result CRUD, default persistence after

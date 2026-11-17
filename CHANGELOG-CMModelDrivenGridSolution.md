@@ -1,5 +1,11 @@
 # CMModelDrivenGridSolution changelog
 
+## Add option authoring — 2026-11-17
+
+- Add a named option with a blind-type component type, selected available components and a default. Save to the existing Dynamics setup field using current-catalogue validation and If-Match. New options work as linked targets and condition sources; removing an option used by rules is blocked.
+- Read existing format 1 documents; use format 2 for custom options with stable IDs and immutable catalogue references. Name, component, default and dependency checks cover creation, editing, serialization and safe removal. Cache-version the editor assets for separate unmanaged CMBlindTypeSetup 1.0.0.1. Generic PCF source, manifest, hierarchy arrows and header click handlers stay unchanged.
+- The full local suite, scoped TypeScript and authoritative resource build pass. Signed-in creation/save/reload preserves the chosen components and default; new linked-target, condition and result authoring and all nested header toggles pass. Independent readback confirms the previous setup is preserved, with temporary entries removed. Fresh exact rollback/evidence: CrmPackage `outputs/deployment-backups/blindtype-add-option-sandbox-20261117-103516/`. Final unmanaged 1.0.0.1 SHA-256 `B9159867F9D764301E25B87A47C54C55B1F899BE91A279DD16AFA85FD2C9F550`; all three assets match. Schema, forms/views, original R200S, catalogue, solution boundary, publisher and generic PCF match baseline. Screenshot capture timed out; hashed browser evidence and independent readback record functional acceptance.
+
 ## Blind-type setup editor — 2026-11-17
 
 - Add option setup and linked-option authoring around the unchanged ResponsiveGrid/HierarchyGrid components. Component pickers use the selected blind type and option group, with defaults, enabled/visible/free-text settings, ordered conditions/results and size constraints. Preserve both legacy unavailable results without offering them for new selections.
