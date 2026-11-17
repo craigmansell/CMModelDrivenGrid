@@ -61,6 +61,31 @@ export function availableComponents(catalogue: Catalogue, document: SetupDocumen
     if (!option?.enabled) return [];
     return optionGroup(catalogue, document, groupId).components.filter(component => component.available && option.componentIds.includes(component.id));
 }
+export function componentChoices(catalogue: Catalogue, document: SetupDocument, groupId: string, replacingId?: string): SetupComponent[] {
+    const option = document.options.find(item => item.groupId === groupId);
+    if (!option?.enabled) return [];
+    return optionGroup(catalogue, document, groupId).components.filter(component => component.available && (component.id === replacingId || !option.componentIds.includes(component.id)));
+}
+export function withComponent(catalogue: Catalogue, document: SetupDocument, groupId: string, componentId: string, makeDefault: boolean, replacingId?: string): SetupDocument {
+    if (!componentChoices(catalogue, document, groupId, replacingId).some(item => item.id === componentId)) throw new Error('Choose an available component that is not already in this option.');
+    const next = clone(document); const option = next.options.find(item => item.groupId === groupId)!;
+    if (replacingId && !option.componentIds.includes(replacingId)) throw new Error('The component row is no longer available.');
+    option.componentIds = replacingId ? option.componentIds.map(id => id === replacingId ? componentId : id) : [...option.componentIds, componentId];
+    if (makeDefault) option.defaultId = componentId;
+    else if (option.defaultId === replacingId) option.defaultId = null;
+    validateSetup(catalogue, next);
+    return next;
+}
+export function withoutSetupRow(catalogue: Catalogue, document: SetupDocument, row: SetupRow): SetupDocument {
+    const next = clone(document);
+    if (row.kind === 'Linked option') next.links = next.links.filter(item => item.id !== row.linkId);
+    else if (row.kind === 'Condition') {const target = next.links.find(item => item.id === row.linkId)!; target.conditions = target.conditions.filter(item => item.id !== row.conditionId);}
+    else if (row.kind === 'Result') {const target = next.links.find(item => item.id === row.linkId)!.conditions.find(item => item.id === row.conditionId)!; target.results = target.results.filter(item => item.id !== row.resultId);}
+    else if (row.kind === 'Option') {const option = next.options.find(item => item.groupId === row.groupId)!; if (isCustomOption(option)) return withoutOption(catalogue, next, row.groupId); option.enabled = false;}
+    else {const option = next.options.find(item => item.groupId === row.groupId)!; option.componentIds = option.componentIds.filter(item => item !== row.componentId); if (option.defaultId === row.componentId) option.defaultId = null;}
+    validateSetup(catalogue, next);
+    return next;
+}
 export function resultComponent(catalogue: Catalogue, document: SetupDocument, groupId: string, conditionId: string, result: SetupResult): SetupComponent {
     return optionGroup(catalogue, document, groupId).components.find(component => component.id === result.componentId)
         ?? catalogue.legacyResults?.find(item => item.groupId === groupId && item.conditionId === conditionId && item.resultId === result.id && item.component.id === result.componentId)?.component

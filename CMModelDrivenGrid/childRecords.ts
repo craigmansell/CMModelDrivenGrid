@@ -8,6 +8,7 @@ export interface ChildFetchResult { entities: ComponentFramework.WebApi.Entity[]
 export interface ChildRequest { parentId: string; page: number; sorting: Sort[]; filtering?: FilterExpression; continuation?: ChildContinuation }
 export interface ChildPage { records: RecordApi[]; hasNextPage: boolean; continuation?: ChildContinuation }
 export interface ChildRowsConfig {
+    accessibleLabel?: string;
     loadPage: (request: ChildRequest) => Promise<ChildPage>;
     /** Check the child view in batches without downloading every child row. */
     hasChildren?: (parentIds: string[]) => Promise<Record<string, boolean>>;

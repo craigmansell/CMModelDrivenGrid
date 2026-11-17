@@ -1,79 +1,93 @@
 # Blind type setup
 
-The editor uses the existing ResponsiveGrid and HierarchyGrid, including the
-Power Apps styling, hierarchy arrows, repeat-click column menus, independent
-child filtering/sorting and retained expansions. No generic PCF source or
-manifest changes are needed.
+Native release status: prepared and locally validated; final manifest publication
+and signed-in native acceptance are pending. The existing standalone 1.0.0.1
+bookmark has not been redirected yet.
 
-## Editing
+The native editor uses the existing ResponsiveGrid and HierarchyGrid inside a
+Dynamics dataset control. It preserves hierarchy arrows, repeated header clicks,
+child filtering/sorting, retained expansions and infinite scrolling. The installed
+general grid remains 1.0.122; the separate setup control is 1.0.1.
 
-- **Add option:** in Options, choose **Add option**, enter a unique name and
-  select a component type. Tick the components available for that blind type,
-  choose an optional default, then **Apply to draft** and **Save configuration**.
-  New options have independent component selections and can be linked targets
-  or condition sources. Remove an unused custom option with **Remove option**;
-  references must be removed first. Original catalogue options can be disabled.
-- **Options:** expand a group to inspect its components. Select a group or
-  component and choose **Edit selected** to set its allowed components, default,
-  order, enabled/visible status and free-text setting. **Set as default** is a
-  shortcut for a selected component.
-- **Linked options:** add or edit a target option, then select it and use
-  **Add condition**. Set AND/OR choice tests, width/drop limits and optional
-  chain length, panel count, area and formula values. Select a condition and
-  choose **Add result**, or a result and **Choose component**, to edit its
-  component and order.
-- Apply each editor to the draft, then **Save configuration** to save the whole
-  setup in Dynamics. Undo restores previous draft changes. Reload asks before
-  discarding an unsaved draft. Server and permission errors retain the draft.
+## Editing in the native subgrid
 
-The available component list is specific to the catalogue on the selected Item
-and its option group. Removing a component used by a condition/result is blocked
-until those references are changed. Conditions cannot create dependency cycles,
-invalid size ranges, duplicate results or references to disabled source options.
+- In **Options**, with nothing selected, choose the native **New Blind type setup
+  row** command to add an option. Enter a unique name, choose a component type,
+  select the components available for this blind type and an optional default,
+  then **Save**. The form is inline and saves straight to Dynamics.
+- Select an option and choose native **New** to insert a component line beneath
+  it. Type an existing component code or description, choose an available match,
+  optionally tick **Default**, and press **Save** or Enter. Cancel removes only
+  the unsaved entry. Components already selected or outside this blind type/type
+  are excluded. The command hides when no eligible choices remain.
+- Select an option/component and use native **Edit**. Options use a non-modal
+  panel; components edit in their own row. **Delete** appears only when the
+  selected entry can be removed without breaking references. Catalogue options
+  are retained and use **Activate/Deactivate** where the rule dependencies allow.
+- In **Linked options**, native **New** creates a target when nothing is selected,
+  adds a condition for a selected linked option, or inserts a result line for a
+  selected condition/result. Edit and Delete follow the selected hierarchy level.
+- Each entry's **Save** persists immediately. Save configuration, Undo and Reload
+  are removed. The native **Refresh** command reloads confirmed state; commands
+  are hidden during an open entry or save. Failed saves retain the entry.
 
-## Data and scope
+Available components come from the catalogue stored on the selected Item and its
+component type. Defaults must be selected available components. Removing a choice
+used by conditions/results is blocked until references are changed. Validation
+also prevents dependency cycles, invalid size ranges and duplicate results.
 
-Existing documents remain format 1. Creating a custom option uses format 2 with
-a stable custom identifier, name and catalogue component-type reference. Removing
-the last custom option returns to format 1. Format 2 requires editor 1.0.0.1 or
-later. Before rolling back the editor, preserve later data and reconcile format 2
-documents; restoring old resource bytes alone cannot make old code read new data.
+## Native host and data contract
 
-Dedicated Item fields `cm_blindtypecataloguejson` and `cm_blindtypesetupjson` hold
-versioned catalogue and configuration documents. The catalogue is administrator
-loaded; the editor changes only the configuration field. Data access uses the
-signed-in user's ordinary Dataverse permissions, current-catalogue validation,
-and `If-Match` optimistic concurrency. A stale save cannot replace another user's
-version. Validation is in the editor/save adapter; no server validation plug-in
-is registered for clients that write the JSON column directly.
+The dedicated full-tab Item form is `9f4ad010-6a1b-4a90-bf36-238d93d10001`, with
+`Subgrid_BlindTypeSetup` related to real `cm_blindtypesetuprow` records. Six existing
+Dynamics buttons are reused with context-sensitive rules and handlers. No second
+PCF toolbar is rendered. Selection resolves to actual persisted Dataverse row IDs,
+including nested children, through public dataset APIs.
 
-This release stores blind-type setup. It does not change the existing Item
-Option/Item Option Selection tables or automatically apply these rules to quote
-calculations. Component IDs in the catalogue are the source Blindata choice IDs;
-they are scoped within the versioned catalogue rather than invented Dataverse
-lookup references. Formula text is preserved and never evaluated in the browser.
+The form sends its actual Item ID through Microsoft's documented PCF custom-event
+callback. Dataset queries are explicitly scoped to that Item. Commands remain
+hidden before the handshake, during native selection preparation and when editing
+is disabled. The new form is available in CRM Hub and is not the default Item form.
 
-The R200S seed has 15 option groups, 82 component choices, four linked groups,
-32 conditions and 68 result links. Two existing `NONE-0` results are absent from
-their direct allowed pool. They are retained as labelled historical references
-and cannot be selected for a new result. No Blindata or SQL writes are performed.
+`cm_item.cm_blindtypecataloguejson` stores the administrator-loaded catalogue;
+`cm_item.cm_blindtypesetupjson` stores the versioned setup. A synchronous server
+plug-in validates writes and projects the saved setup into stable related records
+in the same transaction. Raw writes to projection rows are blocked. Setup edits
+use the signed-in user's ordinary Item/column and native-row permissions, current
+catalogue validation and If-Match concurrency. Setup users need read/create/write/
+delete plus append permissions on the new table; this release does not grant roles
+or elevate the caller. Native command privilege checks still apply.
 
-## Preview and deployment
+Existing documents remain format 1. Custom options use format 2 with stable IDs,
+names and immutable catalogue type references; removing the final custom option
+returns to format 1. Preserve later configuration data before rollback. Unmanaged
+solution imports do not delete newly added schema or restore row data.
 
-- Local authoring preview: `http://127.0.0.1:8183/?demo=r200s&setup=1`.
-  Its Save demo action uses an isolated memory store, with no Dynamics write.
-- Production resource build: `npm run build:blindtype-setup`.
-- Tests: `npm run test:local` and the scoped TypeScript check recorded in the QA
-  evidence. The new store/model tests cover scoping, defaults, cycles, invalid
-  references, legacy result preservation and conditional save payloads.
-- Sandbox deployment: CrmPackage
-  `BlindTypeSetup/Deploy-BlindTypeSetupSandbox.ps1` and matching
-  `CHANGELOG-CMBlindTypeSetup.md`. A fresh exact rollback, target/publisher locks,
-  unchanged form/view/PCF audits and signed-in save/reload acceptance are required.
-- The dedicated sandbox demo Item is `25a03e63-9b28-472f-8bd6-71586867a157`.
-  Open `/WebResources/cm_blindtypesetup.html?data=<Item GUID>` in the target
-  Dynamics environment. This can also be embedded as a web resource in an Item
-  form with the supported record-context parameter; existing forms are untouched.
+The existing Item Option/Item Option Selection tables and quotation calculation
+integration are unchanged. Catalogue component IDs retain their Blindata meaning;
+they are not fabricated Dataverse component lookup IDs. Formula text is preserved
+and never evaluated in the browser. Blindata and SQL remain read only.
+
+The R200S example contains 15 options, 82 component choices, four linked groups,
+32 conditions and 68 results (201 native rows). Two historical unavailable NONE-0
+results remain labelled and cannot be selected for a new result.
+
+## Build, preview and sandbox
+
+- Local preview: `http://127.0.0.1:8183/?demo=r200s&setup=1`. Its isolated memory
+  store never writes to Dynamics. The standalone toolbar is for local authoring.
+- Native build: `scripts/build-native-blindtype-control.ps1`, using existing
+  dependencies and a separate build directory. Package is unmanaged
+  `CMBlindTypeSetup` 1.1.0.0 and includes only the dedicated setup PCF.
+- Checks: `npm run test:local`; the native build runs authoritative lint/compile.
+  Direct-save probes cover retained failures, concurrent/double saves, scoped
+  inline entries, cancellation and native command capabilities.
+- Deployment: CrmPackage `BlindTypeSetup/Deploy-NativeBlindTypeSetupSandbox.ps1`.
+  Exact rollback/evidence: `outputs/deployment-backups/blindtype-native-subgrid-sandbox-20261117-113020/`.
+  Schema/form changes receive full unmanaged rollback snapshots; refinements keep
+  the original immutable rollback and separate exact candidate/receipt artifacts.
+- Sandbox demo Item: `25a03e63-9b28-472f-8bd6-71586867a157`. Native form URL:
+  `https://capricornsandbox.crm4.dynamics.com/main.aspx?appid=f29c988c-f0cc-f011-8544-6045bde18fc1&pagetype=entityrecord&etn=cm_item&id=25a03e63-9b28-472f-8bd6-71586867a157&formid=9f4ad010-6a1b-4a90-bf36-238d93d10001`.
 
 ## Accepted Add option update
 

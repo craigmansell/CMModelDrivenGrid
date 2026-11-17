@@ -218,7 +218,7 @@ function ChildPanel({parentId, root, ancestors, visible}: {parentId:string; root
             if (generation === serial.current) {busy.current = false; setLoading(false);}
         }
     };
-    return <section className="cm-child-panel" aria-label={readOnly ? 'Child options (read only)' : 'Child options'} data-selection-disabled={true}
+    return <section className="cm-child-panel" aria-label={root.childRows?.accessibleLabel ?? (readOnly ? 'Child options (read only)' : 'Child options')} data-selection-disabled={true}
         onClick={event => event.stopPropagation()}>
         {error && <div role="alert">{error} Use Refresh on the subgrid command bar to try again.</div>}
         <HierarchyGrid {...root} width={undefined} height={360} ancestors={ancestors} hierarchyVisible={visible} records={records} sortedRecordIds={ids}

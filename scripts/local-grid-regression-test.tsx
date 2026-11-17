@@ -664,6 +664,8 @@ async function testInfiniteScrollIdentityGuard(): Promise<void> {
 }
 
 async function run(): Promise<void> {
+	console.log('Checking direct blind-type saves and editable component rows...');
+	await (require('./local-blindtype-setup-ui-probes') as typeof import('./local-blindtype-setup-ui-probes')).testDirectSetupSaves(container);
 	console.log('Checking native/full-tab responsive sizing...');
 	await testResponsiveSizing();
 	console.log('Checking column-header open/close toggles...');
@@ -1076,7 +1078,7 @@ async function testLookupInteractionSafety(): Promise<void> {
 
 // The release gates now run in the normal suite; retain the focused entry point.
 const runReviewGates = () => (require('./local-pre-sandbox-review-probes') as typeof import('./local-pre-sandbox-review-probes')).runPreSandboxReviewProbes({container, resources, renderGrid, updateGrid, unmount: () => { ReactDOM.unmountComponentAtNode(container); }});
-const runSelectedSuite = process.argv.includes('--layout') ? testResponsiveSizing : process.argv.includes('--pre-sandbox-review')
+const runSelectedSuite = process.argv.includes('--blindtype-setup') ? () => (require('./local-blindtype-setup-ui-probes') as typeof import('./local-blindtype-setup-ui-probes')).testDirectSetupSaves(container) : process.argv.includes('--layout') ? testResponsiveSizing : process.argv.includes('--pre-sandbox-review')
 	? runReviewGates
 	: run;
 runSelectedSuite()

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import {availableComponents, clone, initialR200sSetup, setupRows, validateSetup, newCondition, OptionSetup, optionGroup, withOption, withoutOption} from './blindtype-setup-model';
+import {availableComponents, clone, componentChoices, initialR200sSetup, setupRows, validateSetup, newCondition, OptionSetup, optionGroup, withComponent, withOption, withoutOption} from './blindtype-setup-model';
+import {componentLabel, resolveComponent} from './blindtype-component-row';
 import {dataverseStore, demoSetupStore} from './blindtype-setup-store';
 
 async function main(): Promise<void> {
@@ -54,6 +55,20 @@ async function main(): Promise<void> {
     assert.throws(() => validateSetup(catalogue, customCycle), /loop/);
     assert.deepEqual(withoutOption(catalogue, added, custom.groupId), document, 'Removing the last custom option restores the exact original v1 document.');
     assert.throws(() => withoutOption(catalogue, added, '147'), /Catalogue options/);
+    const rowChoices = componentChoices(catalogue, edited, custom.groupId);
+    assert.ok(rowChoices.some(item => item.id === '52344')); assert.ok(!rowChoices.some(item => item.id === '52343'));
+    assert.equal(resolveComponent(rowChoices, ' r3050-sl1-wh ').id, '52344');
+    assert.equal(resolveComponent(rowChoices, componentLabel(rowChoices.find(item => item.id === '52344')!)).id, '52344');
+    assert.throws(() => resolveComponent(rowChoices, 'invented component'), /available matches/);
+    assert.throws(() => resolveComponent(rowChoices, 'H-WHITE'), /available matches/);
+    const rowAdded = withComponent(catalogue, edited, custom.groupId, '52344', true);
+    assert.deepEqual(rowAdded.options[15].componentIds, ['52343','52344']); assert.equal(rowAdded.options[15].defaultId, '52344');
+    assert.deepEqual(edited.options[15].componentIds, ['52343'], 'Entry editing must not mutate the saved version.');
+    assert.throws(() => withComponent(catalogue, rowAdded, custom.groupId, '52344', false), /already in this option/);
+    assert.throws(() => withComponent(catalogue, rowAdded, custom.groupId, '52752', false), /available component/);
+    const replaced = withComponent(catalogue, edited, custom.groupId, '52344', true, '52343');
+    assert.deepEqual(replaced.options[15].componentIds, ['52344']); assert.equal(replaced.options[15].defaultId, '52344');
+    assert.throws(() => withComponent(catalogue, linkedCustom, custom.groupId, '59366', false, '52344'), /not available/);
     const store = demoSetupStore(); const state = await store.load(); const draft = clone(state.document);
     draft.options.find(item => item.groupId === '147')!.defaultId = '52344';
     const saved = await store.save(state, draft); assert.equal(saved.etag, '2'); assert.equal((await store.load()).document.options.find(item => item.groupId === '147')!.defaultId, '52344');

@@ -171,6 +171,10 @@ export interface GridProps {
 	renderChildRows?: (record: ComponentFramework.PropertyHelper.DataSetApi.EntityRecord, expanded: boolean) => React.ReactNode;
 	hasChildRows?: (record: ComponentFramework.PropertyHelper.DataSetApi.EntityRecord) => boolean | undefined;
 	renderRowActions?: (record: ComponentFramework.PropertyHelper.DataSetApi.EntityRecord) => React.ReactNode;
+	/** Optional authoring cells; undefined uses the normal grid renderer. */
+	renderCell?: (record: ComponentFramework.PropertyHelper.DataSetApi.EntityRecord, columnName: string) => React.ReactNode | undefined;
+	/** An explicit authoring action may reveal its child list without toggling it. */
+	expandChildRequest?: {id: string; sequence: number};
 	disableSelection?: boolean;
 	/** Only one level of a hierarchy owns the host command-bar selection. */
 	selectionActive?: boolean;
@@ -596,6 +600,7 @@ const onRenderDetailsHeader: IRenderFunction<IDetailsHeaderProps> = (props, defa
 };
 
 export const Grid = React.memo((props: GridProps) => {
+	const renderCustomCell = props.renderCell;
 	const features = props.features ?? {};
 	const initialLayout = useConst(() => readColumnLayout(props.layoutKey));
 	const [columnOrder, setColumnOrder] = useGridState<string[]>(props.stateCache, 'columnOrder', () => initialLayout?.order ?? []);
@@ -612,6 +617,15 @@ export const Grid = React.memo((props: GridProps) => {
 	}, [expandedRows, onCollapseChild]);
 	const hasChildRows = props.hasChildRows;
 	const hierarchyRecords = props.records;
+	const expandChildRequest = props.expandChildRequest;
+	const consumedExpandRequest = React.useRef<typeof expandChildRequest>();
+	React.useEffect(() => {
+		const id = expandChildRequest?.id;
+		if (!id || consumedExpandRequest.current === expandChildRequest || !hierarchyRecords[id] || (hasChildRows && hasChildRows(hierarchyRecords[id]) !== true)) return;
+		consumedExpandRequest.current = expandChildRequest;
+		setVisitedChildRows(current => current.has(id) ? current : new Set([...current, id]));
+		setExpandedRows(current => current.has(id) ? current : new Set([...current, id]));
+	}, [expandChildRequest, hierarchyRecords, hasChildRows, setVisitedChildRows, setExpandedRows]);
 	React.useEffect(() => {
 		if (!hasChildRows) return;
 		setExpandedRows(current => {
@@ -1195,7 +1209,7 @@ export const Grid = React.memo((props: GridProps) => {
 	// cellSelection is included so the List component (which only re-renders pages when `items`
 	// changes reference) picks up the updated onRenderItemColumn selection styles on every click/drag.
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	const displayItems = React.useMemo(() => [...orderedItems], [orderedItems, editingCells, cellSaveStatuses, cellSelection, expandedRows, visitedChildRows, props.renderRowActions, props.renderChildRows, props.hasChildRows, enableInlineEdit, enableLookupLinks, features, columnOptions, lookupTargetEntityMap, onBrowseLookup]);
+	const displayItems = React.useMemo(() => [...orderedItems], [orderedItems, editingCells, cellSaveStatuses, cellSelection, expandedRows, visitedChildRows, props.renderRowActions, props.renderCell, props.renderChildRows, props.hasChildRows, enableInlineEdit, enableLookupLinks, features, columnOptions, lookupTargetEntityMap, onBrowseLookup]);
 	displayItemsRef.current = displayItems;
 	const infiniteLoadIdentity = React.useMemo(() => {
 		const ids = displayItems.map((item) => item.getRecordId()).join("|");
@@ -1887,6 +1901,8 @@ export const Grid = React.memo((props: GridProps) => {
 			if (!column?.fieldName || !item) {
 				return <></>;
 			}
+			const customCell = renderCustomCell?.(item, column.fieldName);
+			if (customCell !== undefined) return customCell;
 
 			const formattedValue = item.getFormattedValue(column.fieldName);
 			const columnMetadata = column.data as ComponentFramework.PropertyHelper.DataSetApi.Column | undefined;
@@ -2174,6 +2190,7 @@ export const Grid = React.memo((props: GridProps) => {
 			);
 		},
 		[
+			renderCustomCell,
 			beginEditCell,
 			cancelEditCell,
 			commitEditCell,

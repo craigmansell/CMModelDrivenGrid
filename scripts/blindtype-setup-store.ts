@@ -22,14 +22,14 @@ export function dataverseStore(origin: string, id: string, request: typeof fetch
     return {kind: 'dataverse', load, save: async (state, document) => {
         // Re-read the current catalogue before saving; never trust a stale or edited picker list.
         const current = await load();
-        if (current.etag !== state.etag) throw new Error('Another user changed this blind type. Reload before saving your changes.');
+        if (current.etag !== state.etag) throw new Error('Another user changed this blind type. Your entry has not been saved. Refresh this page to load the latest version before editing again.');
         validateSetup(current.catalogue, document);
         const response = await request(url, {method: 'PATCH', credentials: 'include', headers: {...headers, 'Content-Type': 'application/json', 'If-Match': state.etag, Prefer: 'return=representation'},
             body: JSON.stringify({cm_blindtypesetupjson: JSON.stringify(document)})});
-        if (response.status === 412) throw new Error('Another user changed this blind type. Your changes have not overwritten theirs. Reload before saving.');
-        if (!response.ok) throw new Error(response.status === 403 ? 'You do not have permission to save this blind type.' : 'Dynamics did not save the setup. Your draft is still available.');
+        if (response.status === 412) throw new Error('Another user changed this blind type. Your entry has not overwritten theirs. Refresh this page to load the latest version before editing again.');
+        if (!response.ok) throw new Error(response.status === 403 ? 'You do not have permission to save this blind type. Your entry is still available.' : 'Dynamics did not save this entry. It is still available to retry.');
         const saved = response.status === 204 ? await load() : parse(await response.json() as Record<string, unknown>);
-        if (JSON.stringify(saved.document) !== JSON.stringify(document)) throw new Error('The saved version could not be confirmed. Reload the blind type before editing again.');
+        if (JSON.stringify(saved.document) !== JSON.stringify(document)) throw new Error('The saved version could not be confirmed. Refresh this page before editing again.');
         return saved;
     }};
 }

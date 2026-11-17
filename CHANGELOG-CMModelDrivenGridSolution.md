@@ -1,5 +1,12 @@
 # CMModelDrivenGridSolution changelog
 
+## Native blind-type setup and direct saves — 2026-11-17 (in progress)
+
+- Replace staged saves with Save/Cancel for each entry. Add actual editable component/result rows with catalogue-scoped code/description selection, defaults and direct Dynamics persistence. Keep failed entries available and reject duplicate in-flight saves. Remove Save configuration, Undo and Reload; use inline option/condition forms rather than modal dialogs.
+- Prepare a separate native dataset control for related blind-type setup rows. Use the Dynamics command bar and row-sensitive native command rules; hide the standalone preview toolbar inside that host. Preserve header handlers and hierarchy toggles. Add only opt-in authoring cell/reveal/accessible-region hooks to the shared grid; the installed general PCF is not changed.
+
+- Full local suite and native 1.0.1 build/lint pass. Native v2 command and server-guard checks pass in sandbox; the saved configuration remains unchanged with 201 native rows. Manifest activation and signed-in native acceptance are pending; no final native release/export is claimed.
+
 ## Add option authoring — 2026-11-17
 
 - Add a named option with a blind-type component type, selected available components and a default. Save to the existing Dynamics setup field using current-catalogue validation and If-Match. New options work as linked targets and condition sources; removing an option used by rules is blocked.
