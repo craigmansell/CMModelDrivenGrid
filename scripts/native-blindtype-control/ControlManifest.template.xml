@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest><control namespace="CraigMansell" constructor="CMBlindTypeSetupGrid" version="1.0.1" display-name-key="Blind_Type_Setup" description-key="Blind_Type_Setup" control-type="standard">
+<manifest><control namespace="CraigMansell" constructor="CMBlindTypeSetupGridV2" version="1.0.7" display-name-key="Blind_Type_Setup" description-key="Blind_Type_Setup" control-type="standard">
 <data-set name="records" display-name-key="Blind_Type_Setup" cds-data-set-options="displayCommandBar:true;displayViewSelector:false;displayQuickFind:false"/>
+<property name="setupCommands" display-name-key="Blind_Type_Setup" description-key="Blind_Type_Setup" of-type="Object" usage="output" required="false"/>
 <event name="SetupCommandsChanged" display-name-key="Blind_Type_Setup" description-key="Blind_Type_Setup"/>
 <resources><code path="index.ts" order="1"/><resx path="strings/CMBlindTypeSetupGrid.1033.resx" version="1.0.0"/></resources>
 <feature-usage><uses-feature name="WebAPI" required="true"/></feature-usage>

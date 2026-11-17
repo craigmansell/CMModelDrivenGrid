@@ -1,13 +1,25 @@
 # Blind type setup
 
-Native release status: published in sandbox; signed-in native acceptance awaits
-command-metadata/cache refresh in Chrome. The existing standalone 1.0.0.1 bookmark
-has not been redirected yet.
+Place the grid inside the existing Item **Options** tab. Preserve the Item main
+form, its other tabs, its existing Options controls and its handlers. The isolated
+sandbox preview copies that main-form layout and adds one setup section to Options;
+it does not replace the existing Item main form.
+
+Native release status: published in sandbox; signed-in native acceptance remains
+pending. CRM Hub registration and the documented API ribbon rebuild succeeded.
+Browsers show the complete Item layout and control 1.0.7. Adapter v8 and command
+revision 9 are published; the rebuild succeeded at 17:23:50 UTC. Edge still loads
+form adapter v7/ribbon adapter v4 after reload, while the in-app browser previously
+retained v5 rules. Sandbox site-data clearing is pending. The startup record
+callback remains unverified. A rejected bound-column
+trial was cleaned up; the clean V2 dataset uses public events/outputs, with no
+bound signal property. The existing standalone 1.0.0.1 bookmark has
+not been redirected yet.
 
 The native editor uses the existing ResponsiveGrid and HierarchyGrid inside a
 Dynamics dataset control. It preserves hierarchy arrows, repeated header clicks,
 child filtering/sorting, retained expansions and infinite scrolling. The installed
-general grid remains 1.0.122; the separate setup control is 1.0.1.
+general grid remains 1.0.122; the separate setup control candidate is V2 1.0.7.
 
 ## Editing in the native subgrid
 
@@ -38,7 +50,7 @@ also prevents dependency cycles, invalid size ranges and duplicate results.
 
 ## Native host and data contract
 
-The dedicated full-tab Item form is `9f4ad010-6a1b-4a90-bf36-238d93d10001`, with
+The isolated Item preview form is `9f4ad010-6a1b-4a90-bf36-238d93d10001`, with
 `Subgrid_BlindTypeSetup` related to real `cm_blindtypesetuprow` records. Six existing
 Dynamics buttons are reused with context-sensitive rules and handlers. No second
 PCF toolbar is rendered. Selection resolves to actual persisted Dataverse row IDs,
@@ -47,7 +59,10 @@ including nested children, through public dataset APIs.
 The form sends its actual Item ID through Microsoft's documented PCF custom-event
 callback. Dataset queries are explicitly scoped to that Item. Commands remain
 hidden before the handshake, during native selection preparation and when editing
-is disabled. The new form is available in CRM Hub and is not the default Item form.
+is disabled. The preview is available in CRM Hub and is not the default Item form.
+Its Options-only main-form candidate has an exact recovery check: removing only
+the added section, control description, library and handler recovers the original
+complete Item main form XML. Main-form activation remains pending native acceptance.
 
 `cm_item.cm_blindtypecataloguejson` stores the administrator-loaded catalogue;
 `cm_item.cm_blindtypesetupjson` stores the versioned setup. A synchronous server

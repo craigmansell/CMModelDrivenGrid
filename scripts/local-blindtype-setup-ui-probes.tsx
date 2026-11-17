@@ -79,14 +79,19 @@ async function testNativePcfBinding(container:HTMLElement):Promise<void> {
     let filter:unknown,selected:string[]=[];let reads=0;
     const control=new CMBlindTypeSetupGrid();
     const records={loading:false,error:false,records:{},sortedRecordIds:[] as string[],sorting:[],getTargetEntityType:()=> 'cm_blindtypesetuprow',filtering:{getFilter:()=>undefined,setFilter:(value:unknown)=>{filter=value;}},paging:{hasNextPage:false,hasPreviousPage:false,setPageSize:()=>undefined},setSelectedRecordIds:(ids:string[])=>{selected=ids;},getSelectedRecordIds:()=>selected,refresh:()=>{queueMicrotask(()=>control.updateView(context as never));}};
-    const context={parameters:{records},updatedProperties:['records'],mode:{trackContainerResize:()=>undefined,isControlDisabled:false,allocatedWidth:1100,allocatedHeight:600},events:{SetupCommandsChanged:(state:import('./blindtype-native-commands').SetupCommandState)=>{latest=state;}},webAPI:{retrieveMultipleRecords:async(name:string,query:string)=>{assert.equal(name,'cm_blindtypesetuprow');assert.ok(query.includes(`_cm_blindtype_value eq ${itemId}`));return {entities:[{cm_sourcekey:'option-147',cm_blindtypesetuprowid:nativeId}]};}}};
+    let subscribed=false,eventCalls=0;
+    const events:{SetupCommandsChanged:(state:import('./blindtype-native-commands').SetupCommandState)=>void}={SetupCommandsChanged:function(state){assert.equal(this,events,'The public event method must retain its context receiver.');eventCalls++;if(subscribed)latest=state;}};
+    const context={parameters:{records},updatedProperties:['records'],mode:{trackContainerResize:()=>undefined,isControlDisabled:false,allocatedWidth:1100,allocatedHeight:600},events,webAPI:{retrieveMultipleRecords:async(name:string,query:string)=>{assert.equal(name,'cm_blindtypesetuprow');assert.ok(query.includes(`_cm_blindtype_value eq ${itemId}`));return {entities:[{cm_sourcekey:'option-147',cm_blindtypesetuprowid:nativeId}]};}}};
     try{
         // Render is intercepted to exercise the PCF/public host protocol independently of UI probes.
         (reactDom as unknown as {render:typeof originalRender}).render=((element:React.ReactElement)=>{if(element.type!== 'div')props=element.props;return null;}) as unknown as typeof originalRender;
         globalThis.window={location:{origin:'https://capricornsandbox.crm4.dynamics.com'}} as unknown as Window & typeof globalThis;
         globalThis.fetch=(async(url:RequestInfo|URL)=>{reads++;assert.ok(String(url).includes(`/cm_items(${itemId})`));return {ok:true,json:async()=>({cm_itemid:itemId,cm_name:'R200S','@odata.etag':'1',cm_blindtypecataloguejson:JSON.stringify(initial.catalogue),cm_blindtypesetupjson:JSON.stringify(initial.document)})} as Response;}) as typeof fetch;
-        control.init(context as never,()=>undefined,{},container as HTMLDivElement);control.updateView(context as never);
+        let outputChanges=0;control.init(context as never,()=>{outputChanges++;},{},container as HTMLDivElement);control.updateView(context as never);
         assert.equal(reads,0,'An empty dataset must not guess a blind type or read a different record.');
+        assert.equal(latest,undefined,'A startup event can occur before the form subscribes.');
+        assert.equal(typeof control.getOutputs().setupCommands?.bindRecord,'function','The public output dictionary must expose the same guarded startup callback.');assert.ok(outputChanges>0);
+        subscribed=true;await new Promise(resolve=>setTimeout(resolve,300));
         assert.ok(latest?.bindRecord&&!latest.ready,'The initial event must request the actual form record while commands remain locked.');
         latest!.bindRecord!('foreign');assert.equal(props,undefined,'Invalid form IDs must not initialize the store.');
         latest!.bindRecord!(itemId);await Promise.resolve();await Promise.resolve();
@@ -97,10 +102,11 @@ async function testNativePcfBinding(container:HTMLElement):Promise<void> {
         bound.nativeHost.publish({ready:true,selected:[],canNew:true,canEdit:false,canDelete:false,canActivate:false,canDeactivate:false,canRefresh:true,execute:()=>undefined});
         assert.equal(latest!.canNew,true);context.mode.isControlDisabled=true;control.updateView(context as never);assert.equal(latest!.canNew,false,'Disabled controls must revoke native capabilities.');
         control.destroy();assert.equal(latest!.ready,false,'Destroy must revoke cached command state.');
+        const callsAfterDestroy=eventCalls;await new Promise(resolve=>setTimeout(resolve,300));assert.equal(eventCalls,callsAfterDestroy,'Destroy must cancel startup retries.');
     }finally{
         (reactDom as unknown as {render:typeof originalRender}).render=originalRender;globalThis.window=originalWindow;globalThis.fetch=originalFetch;
     }
-    console.log('Native PCF binding passed: empty-dataset handshake, actual form Item scope, real row GUID selection and disabled/destroyed command revocation.');
+    console.log('Native PCF binding passed: delayed subscription, public event/output delivery, actual Item scope, real GUID selection and disabled/destroyed revocation.');
 }
 
 async function testNativeCommands(container: HTMLElement): Promise<void> {

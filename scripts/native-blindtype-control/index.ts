@@ -10,6 +10,7 @@ import '../../CMModelDrivenGrid/css/CMModelDrivenGrid.css';
 import '../blindtype-setup.css';
 
 interface Inputs {records: ComponentFramework.PropertyTypes.DataSet}
+interface Outputs {setupCommands?:SetupCommandState}
 interface PageWaiter {baseline:string;resolve:()=>void;reject:(failure:Error)=>void;timer:ReturnType<typeof setTimeout>}
 type NativeContext = ComponentFramework.Context<Inputs> & {events: {SetupCommandsChanged: (state: SetupCommandState) => void}};
 const guid = (value: string): string => value.replace(/[{}]/g,'').toLowerCase();
@@ -19,7 +20,7 @@ const lookupId = (value: unknown): string | undefined => {
     const id = typeof row?.id === 'string' ? row.id : row?.id?.guid;
     return id && /^[0-9a-f-]{36}$/i.test(guid(id)) ? guid(id) : undefined;
 };
-export class CMBlindTypeSetupGrid implements ComponentFramework.StandardControl<Inputs, Record<string, never>> {
+export class CMBlindTypeSetupGrid implements ComponentFramework.StandardControl<Inputs, Outputs> {
     private context!: NativeContext;
     private container!: HTMLDivElement;
     private native!: NativeHierarchySelection;
@@ -30,6 +31,12 @@ export class CMBlindTypeSetupGrid implements ComponentFramework.StandardControl<
     private changed?: SetupCommandState;
     private binding?: string;
     private waiters = new Set<PageWaiter>();
+    private reportedEventType?: string;
+    private bindingTimer?: ReturnType<typeof setTimeout>;
+    private bindingAttempts = 0;
+    private notifyOutputChanged!:()=>void;
+    private output?:SetupCommandState;
+    private outputSignature?:string;
     private host: NativeSetupHost = {
         publish: state => {this.changed = state; this.raise();},
         select: async (ids, children) => {
@@ -38,8 +45,10 @@ export class CMBlindTypeSetupGrid implements ComponentFramework.StandardControl<
         },
         refreshed: () => {this.context.parameters.records.refresh();},
     };
-    public init(context: ComponentFramework.Context<Inputs>, _notifyOutputChanged:()=>void, _state: ComponentFramework.Dictionary, container: HTMLDivElement): void {
+    public init(context: ComponentFramework.Context<Inputs>, notifyOutputChanged:()=>void, _state: ComponentFramework.Dictionary, container: HTMLDivElement): void {
         this.context = context as NativeContext; this.container = container;
+        this.notifyOutputChanged=notifyOutputChanged;
+        this.container.dataset.setupControlVersion='1.0.7';
         initializeIcons(undefined,{disableWarnings:true}); context.mode.trackContainerResize(true);
         this.native = new NativeHierarchySelection('cm_parentrow','cm_blindtypesetuprowid',{
             dataset:()=>this.context.parameters.records,basePageSize:()=>50,
@@ -49,21 +58,35 @@ export class CMBlindTypeSetupGrid implements ComponentFramework.StandardControl<
     }
     private raise = ():void => {
         const event = this.context.events?.SetupCommandsChanged;
-        if (!event) return;
+        if(this.reportedEventType!==typeof event){this.reportedEventType=typeof event;this.container.dataset.setupEvent=this.reportedEventType;}
+        this.container.dataset.setupBound=String(!!this.itemId);
         const state = this.changed;
         const ready = !this.destroyed && !!state?.ready && !this.native?.busy && !this.context.mode.isControlDisabled && !this.context.parameters.records.error;
-        event({...state,recordId:this.itemId,bindRecord:this.itemId?undefined:this.bindRecord,ready,selected:state?.selected??[],canNew:ready&&!!state?.canNew,canEdit:ready&&!!state?.canEdit,canDelete:ready&&!!state?.canDelete,canActivate:ready&&!!state?.canActivate,canDeactivate:ready&&!!state?.canDeactivate,canRefresh:ready&&!!state?.canRefresh,execute:command=>{if(ready)state?.execute(command);}});
+        const payload:SetupCommandState={...state,recordId:this.itemId,bindRecord:this.itemId?undefined:this.bindRecord,ready,selected:state?.selected??[],canNew:ready&&!!state?.canNew,canEdit:ready&&!!state?.canEdit,canDelete:ready&&!!state?.canDelete,canActivate:ready&&!!state?.canActivate,canDeactivate:ready&&!!state?.canDeactivate,canRefresh:ready&&!!state?.canRefresh,execute:command=>{if(this.output?.ready)this.changed?.execute(command);}};
+        this.output=payload;
+        const signature=JSON.stringify(payload);
+        if(this.outputSignature!==signature){this.outputSignature=signature;this.notifyOutputChanged();}
+        if(typeof event==='function')this.context.events.SetupCommandsChanged(payload);
     };
     private bindRecord = (value:string):void => {
         const itemId=guid(value);
         if(this.destroyed||this.itemId||this.binding||!/^[0-9a-f-]{36}$/.test(itemId))return;
         this.binding=itemId;
         this.itemId=itemId;
+        clearTimeout(this.bindingTimer);this.bindingTimer=undefined;
         const inner=dataverseStore(window.location.origin,itemId);
         this.store={kind:'dataverse',load:async()=>this.mapRows(await inner.load()),save:async(before,document)=>this.mapRows(await inner.save(before,document))};
         const scope:FilterExpression={filterOperator:0,conditions:[{attributeName:'cm_blindtype',conditionOperator:0,value:itemId}],filters:this.native.rootFilter?[this.native.rootFilter]:[]};
         this.updateView(this.context);
         void this.native.refreshRoots(scope);
+    };
+    private requestBinding = ():void => {
+        this.bindingTimer=undefined;
+        if(this.destroyed||this.itemId)return;
+        this.container.dataset.setupBindingAttempts=String(++this.bindingAttempts);
+        this.raise();
+        if(!this.itemId&&this.bindingAttempts<60)this.bindingTimer=setTimeout(this.requestBinding,250);
+        else if(!this.itemId)this.renderError('The setup command connection did not initialize. Refresh this page.');
     };
     private loadPage(change:()=>void):Promise<void> {
         return new Promise((resolve,reject)=>{
@@ -87,13 +110,14 @@ export class CMBlindTypeSetupGrid implements ComponentFramework.StandardControl<
         const ids = new Set(Object.values(dataset.records).map(row=>lookupId(row.getValue('cm_blindtype'))).filter((id):id is string=>!!id));
         if(ids.size>1){this.renderError('This subgrid must be related to one blind type.');return;}
         if(this.itemId&&ids.size&&![...ids].includes(this.itemId)){this.changed=undefined;this.renderError('The setup rows do not belong to this blind type.');this.raise();return;}
-        if(!this.itemId){this.renderError('Loading blind-type setup…');this.raise();return;}
+        if(!this.itemId){this.renderError(this.bindingAttempts<60?'Loading blind-type setup…':'The setup command connection did not initialize. Refresh this page.');this.raise();if(!this.bindingTimer&&this.bindingAttempts<60)this.bindingTimer=setTimeout(this.requestBinding,250);return;}
         const width=context.mode.allocatedWidth>0?context.mode.allocatedWidth:undefined;
         const height=context.mode.allocatedHeight>0?context.mode.allocatedHeight:undefined;
         this.container.style.height=height?`${height}px`:'100%';this.container.style.width=width?`${width}px`:'100%';
         ReactDOM.render(React.createElement(BlindTypeSetup,{store:this.store!,nativeHost:this.host}),this.container);
         this.raise();
     }
-    public getOutputs():Record<string,never>{return {};}
-    public destroy():void {this.destroyed=true;this.changed=undefined;this.raise();this.native.dispose();for(const waiter of [...this.waiters])waiter.reject(new Error('The setup control was closed.'));ReactDOM.unmountComponentAtNode(this.container);}
+    public getOutputs():Outputs{return {setupCommands:this.output};}
+    public destroy():void {this.destroyed=true;clearTimeout(this.bindingTimer);this.bindingTimer=undefined;this.changed=undefined;this.raise();this.native.dispose();for(const waiter of [...this.waiters])waiter.reject(new Error('The setup control was closed.'));ReactDOM.unmountComponentAtNode(this.container);}
 }
+export {CMBlindTypeSetupGrid as CMBlindTypeSetupGridV2};

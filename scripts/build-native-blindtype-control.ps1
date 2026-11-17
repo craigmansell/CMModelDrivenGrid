@@ -10,10 +10,10 @@ $control=Join-Path $BuildRoot 'control';$solution=Join-Path $BuildRoot 'solution
 foreach($path in @($control,(Join-Path $control 'strings'),(Join-Path $solution 'src/Other'))){New-Item -ItemType Directory -Path $path -Force|Out-Null}
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'native-blindtype-control/ControlManifest.template.xml') -Destination (Join-Path $control 'ControlManifest.Input.xml')
 $relative=[IO.Path]::GetRelativePath($control,(Join-Path $PSScriptRoot 'native-blindtype-control/index')).Replace('\','/')
-[IO.File]::WriteAllText((Join-Path $control 'index.ts'),"export {CMBlindTypeSetupGrid} from '$relative';",[Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllText((Join-Path $control 'index.ts'),"export {CMBlindTypeSetupGridV2} from '$relative';",[Text.UTF8Encoding]::new($false))
 [xml]$resx=Get-Content (Join-Path $source 'CMModelDrivenGrid/strings/CMModelDrivenGrid.1033.resx') -Raw
 $data=$resx.CreateElement('data');$data.SetAttribute('name','Blind_Type_Setup');$value=$resx.CreateElement('value');$value.InnerText='Blind type setup';[void]$data.AppendChild($value);[void]$resx.root.AppendChild($data);$resx.Save((Join-Path $control 'strings/CMBlindTypeSetupGrid.1033.resx'))
-$project=[IO.File]::ReadAllText((Join-Path $source 'CMModelDrivenGrid.pcfproj')).Replace('<Name>CMModelDrivenGrid</Name>','<Name>CMBlindTypeSetupGrid</Name>').Replace('Version="1.*"','Version="1.52.1"')
+$project=[IO.File]::ReadAllText((Join-Path $source 'CMModelDrivenGrid.pcfproj')).Replace('<Name>CMModelDrivenGrid</Name>','<Name>CMBlindTypeSetupGridV2</Name>').Replace('Version="1.*"','Version="1.52.1"')
 [IO.File]::WriteAllText((Join-Path $BuildRoot 'CMBlindTypeSetupGrid.pcfproj'),$project,[Text.UTF8Encoding]::new($false))
 $package=Get-Content (Join-Path $source 'package.json') -Raw|ConvertFrom-Json;$package.name='blind-type-setup-grid';$package|ConvertTo-Json -Depth 20|Set-Content (Join-Path $BuildRoot 'package.json') -Encoding utf8
 Copy-Item -LiteralPath (Join-Path $source 'package-lock.json') -Destination (Join-Path $BuildRoot 'package-lock.json')
