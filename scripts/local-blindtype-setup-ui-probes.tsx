@@ -80,6 +80,10 @@ async function testNativePcfBinding(container:HTMLElement):Promise<void> {
     const control=new CMBlindTypeSetupGrid();
     const records={loading:false,error:false,records:{},sortedRecordIds:[] as string[],sorting:[],getTargetEntityType:()=> 'cm_blindtypesetuprow',filtering:{getFilter:()=>undefined,setFilter:(value:unknown)=>{filter=value;}},paging:{hasNextPage:false,hasPreviousPage:false,setPageSize:()=>undefined},setSelectedRecordIds:(ids:string[])=>{selected=ids;},getSelectedRecordIds:()=>selected,refresh:()=>{queueMicrotask(()=>control.updateView(context as never));}};
     let subscribed=false,eventCalls=0;
+    let channelSubscribed=false,channelDestroyed=false,channelHint:string|undefined;
+    let channelLatest:import('./blindtype-native-commands').SetupCommandState|undefined;
+    const channelListener=(event:Event):void=>{const detail=(event as CustomEvent<import('./blindtype-native-channel').SetupCommandEnvelope>).detail;assert.equal(event.target,container);assert.equal(detail.protocol,1);assert.equal(detail.component,'CMBlindTypeSetupGridV2');assert.equal(detail.instanceId,container.getAttribute('data-setup-instance'));channelLatest=detail.payload;channelDestroyed=detail.destroyed;channelHint=detail.recordHint;if(channelSubscribed)latest=detail.payload;};
+    container.ownerDocument.addEventListener('cm:blind-type-setup:commands:v1',channelListener);
     const events:{SetupCommandsChanged:(state:import('./blindtype-native-commands').SetupCommandState)=>void}={SetupCommandsChanged:function(state){assert.equal(this,events,'The public event method must retain its context receiver.');eventCalls++;if(subscribed)latest=state;}};
     const context={parameters:{records},updatedProperties:['records'],mode:{trackContainerResize:()=>undefined,isControlDisabled:false,allocatedWidth:1100,allocatedHeight:600},events,webAPI:{retrieveMultipleRecords:async(name:string,query:string)=>{assert.equal(name,'cm_blindtypesetuprow');assert.ok(query.includes(`_cm_blindtype_value eq ${itemId}`));return {entities:[{cm_sourcekey:'option-147',cm_blindtypesetuprowid:nativeId}]};}}};
     try{
@@ -91,8 +95,13 @@ async function testNativePcfBinding(container:HTMLElement):Promise<void> {
         assert.equal(reads,0,'An empty dataset must not guess a blind type or read a different record.');
         assert.equal(latest,undefined,'A startup event can occur before the form subscribes.');
         assert.equal(typeof control.getOutputs().setupCommands?.bindRecord,'function','The public output dictionary must expose the same guarded startup callback.');assert.ok(outputChanges>0);
+        records.loading=true;records.records={[nativeId]:{getValue:()=>[{id:'772fbc3a-7b53-f111-a824-7c1e52205a7d'}],getRecordId:()=>nativeId}} as never;records.sortedRecordIds=[nativeId];control.updateView(context as never);
+        assert.equal(channelHint,undefined,'Retained rows while loading must never supply the parent Item for initialization.');assert.equal(captured(),undefined,'Loading a different record must not initialize a store from retained rows.');
+        records.loading=false;records.records={};records.sortedRecordIds=[];control.updateView(context as never);
         subscribed=true;await new Promise(resolve=>setTimeout(resolve,300));
         assert.ok(latest?.bindRecord&&!latest.ready,'The initial event must request the actual form record while commands remain locked.');
+        assert.equal(typeof channelLatest?.bindRecord,'function','The owned channel must expose the guarded callback even when the form API ignores events/outputs.');
+        subscribed=false;channelSubscribed=true;latest=channelLatest;
         latest!.bindRecord!('foreign');assert.equal(props,undefined,'Invalid form IDs must not initialize the store.');
         latest!.bindRecord!(itemId);await Promise.resolve();await Promise.resolve();
         const bound=captured();assert.ok(bound);assert.equal((await bound.store.load()).id,itemId);
@@ -102,9 +111,11 @@ async function testNativePcfBinding(container:HTMLElement):Promise<void> {
         bound.nativeHost.publish({ready:true,selected:[],canNew:true,canEdit:false,canDelete:false,canActivate:false,canDeactivate:false,canRefresh:true,execute:()=>undefined});
         assert.equal(latest!.canNew,true);context.mode.isControlDisabled=true;control.updateView(context as never);assert.equal(latest!.canNew,false,'Disabled controls must revoke native capabilities.');
         control.destroy();assert.equal(latest!.ready,false,'Destroy must revoke cached command state.');
+        assert.equal(channelDestroyed,true,'Destroy must retire the exact component instance on the owned channel.');
         const callsAfterDestroy=eventCalls;await new Promise(resolve=>setTimeout(resolve,300));assert.equal(eventCalls,callsAfterDestroy,'Destroy must cancel startup retries.');
     }finally{
         (reactDom as unknown as {render:typeof originalRender}).render=originalRender;globalThis.window=originalWindow;globalThis.fetch=originalFetch;
+        container.ownerDocument.removeEventListener('cm:blind-type-setup:commands:v1',channelListener);
     }
     console.log('Native PCF binding passed: delayed subscription, public event/output delivery, actual Item scope, real GUID selection and disabled/destroyed revocation.');
 }

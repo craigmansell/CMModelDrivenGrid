@@ -4,6 +4,7 @@ import {initializeIcons} from '@fluentui/react/lib/Icons';
 import {BlindTypeSetup} from '../blindtype-setup';
 import {dataverseStore, SetupState, SetupStore} from '../blindtype-setup-store';
 import {NativeSetupHost, SetupCommandState} from '../blindtype-native-commands';
+import {publishSetupCommand} from '../blindtype-native-channel';
 import {NativeHierarchySelection} from '../../CMModelDrivenGrid/nativeHierarchy';
 import {FilterExpression} from '../../CMModelDrivenGrid/filtering';
 import '../../CMModelDrivenGrid/css/CMModelDrivenGrid.css';
@@ -37,6 +38,8 @@ export class CMBlindTypeSetupGrid implements ComponentFramework.StandardControl<
     private notifyOutputChanged!:()=>void;
     private output?:SetupCommandState;
     private outputSignature?:string;
+    private instanceId = `setup-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    private recordHint?:string;
     private host: NativeSetupHost = {
         publish: state => {this.changed = state; this.raise();},
         select: async (ids, children) => {
@@ -48,7 +51,8 @@ export class CMBlindTypeSetupGrid implements ComponentFramework.StandardControl<
     public init(context: ComponentFramework.Context<Inputs>, notifyOutputChanged:()=>void, _state: ComponentFramework.Dictionary, container: HTMLDivElement): void {
         this.context = context as NativeContext; this.container = container;
         this.notifyOutputChanged=notifyOutputChanged;
-        this.container.dataset.setupControlVersion='1.0.7';
+        this.container.dataset.setupControlVersion='1.0.9';
+        this.container.dataset.setupInstance=this.instanceId;
         initializeIcons(undefined,{disableWarnings:true}); context.mode.trackContainerResize(true);
         this.native = new NativeHierarchySelection('cm_parentrow','cm_blindtypesetuprowid',{
             dataset:()=>this.context.parameters.records,basePageSize:()=>50,
@@ -61,16 +65,17 @@ export class CMBlindTypeSetupGrid implements ComponentFramework.StandardControl<
         if(this.reportedEventType!==typeof event){this.reportedEventType=typeof event;this.container.dataset.setupEvent=this.reportedEventType;}
         this.container.dataset.setupBound=String(!!this.itemId);
         const state = this.changed;
-        const ready = !this.destroyed && !!state?.ready && !this.native?.busy && !this.context.mode.isControlDisabled && !this.context.parameters.records.error;
+        const ready = !this.destroyed && !!state?.ready && !this.native?.busy && !this.context.mode.isControlDisabled && !this.context.parameters.records.loading && !this.context.parameters.records.error;
         const payload:SetupCommandState={...state,recordId:this.itemId,bindRecord:this.itemId?undefined:this.bindRecord,ready,selected:state?.selected??[],canNew:ready&&!!state?.canNew,canEdit:ready&&!!state?.canEdit,canDelete:ready&&!!state?.canDelete,canActivate:ready&&!!state?.canActivate,canDeactivate:ready&&!!state?.canDeactivate,canRefresh:ready&&!!state?.canRefresh,execute:command=>{if(this.output?.ready)this.changed?.execute(command);}};
         this.output=payload;
         const signature=JSON.stringify(payload);
         if(this.outputSignature!==signature){this.outputSignature=signature;this.notifyOutputChanged();}
         if(typeof event==='function')this.context.events.SetupCommandsChanged(payload);
+        publishSetupCommand(this.container,{protocol:1,component:'CMBlindTypeSetupGridV2',controlName:'Subgrid_BlindTypeSetup',instanceId:this.instanceId,recordHint:this.recordHint,loading:this.context.parameters.records.loading,destroyed:this.destroyed,payload},()=>this.context.parameters.records.refresh());
     };
     private bindRecord = (value:string):void => {
         const itemId=guid(value);
-        if(this.destroyed||this.itemId||this.binding||!/^[0-9a-f-]{36}$/.test(itemId))return;
+        if(this.destroyed||this.itemId||this.binding||this.context.parameters.records.loading||!/^[0-9a-f-]{36}$/.test(itemId))return;
         this.binding=itemId;
         this.itemId=itemId;
         clearTimeout(this.bindingTimer);this.bindingTimer=undefined;
@@ -108,8 +113,9 @@ export class CMBlindTypeSetupGrid implements ComponentFramework.StandardControl<
         if(!dataset.loading){for(const waiter of [...this.waiters]){if(dataset.error)waiter.reject(new Error('Power Apps could not load the selected setup rows.'));else if(context.updatedProperties.some(name=>name==='records'||name==='dataset')||waiter.baseline!==this.signature())waiter.resolve();}}
         if(dataset.getTargetEntityType()!=='cm_blindtypesetuprow'){this.renderError('Bind Blind Type Setup Grid only to Blind type setup rows.');return;}
         const ids = new Set(Object.values(dataset.records).map(row=>lookupId(row.getValue('cm_blindtype'))).filter((id):id is string=>!!id));
-        if(ids.size>1){this.renderError('This subgrid must be related to one blind type.');return;}
-        if(this.itemId&&ids.size&&![...ids].includes(this.itemId)){this.changed=undefined;this.renderError('The setup rows do not belong to this blind type.');this.raise();return;}
+        this.recordHint=!dataset.loading&&ids.size===1?[...ids][0]:undefined;
+        if(!dataset.loading&&ids.size>1){this.renderError('This subgrid must be related to one blind type.');return;}
+        if(!dataset.loading&&this.itemId&&ids.size&&![...ids].includes(this.itemId)){this.changed=undefined;this.renderError('The setup rows do not belong to this blind type.');this.raise();return;}
         if(!this.itemId){this.renderError(this.bindingAttempts<60?'Loading blind-type setup…':'The setup command connection did not initialize. Refresh this page.');this.raise();if(!this.bindingTimer&&this.bindingAttempts<60)this.bindingTimer=setTimeout(this.requestBinding,250);return;}
         const width=context.mode.allocatedWidth>0?context.mode.allocatedWidth:undefined;
         const height=context.mode.allocatedHeight>0?context.mode.allocatedHeight:undefined;

@@ -13,7 +13,7 @@
 		"start:watch": "pcf-scripts start watch",
 		"demo": "node scripts/start-demo.js",
 		"build:blindtype-setup": "node scripts/build-blindtype-setup.js && tsx scripts/export-blindtype-setup-seed.ts",
-		"test:blindtype-setup": "tsx scripts/local-blindtype-setup-test.ts",
+		"test:blindtype-setup": "tsx scripts/local-blindtype-setup-test.ts && tsx scripts/local-blindtype-native-hub-test.ts",
 		"test:local": "npm run test:core && npm run test:inline-edit && npm run test:cell-selection && npm run test:grid && npm run test:filters && npm run test:children && npm run test:demo-hierarchy && npm run test:r200s-demo && npm run test:dev-tools",
 		"test:r200s-demo": "tsx scripts/local-r200s-demo-test.ts && npm run test:blindtype-setup",
 		"test:demo-hierarchy": "tsx scripts/local-demo-hierarchy-test.ts",

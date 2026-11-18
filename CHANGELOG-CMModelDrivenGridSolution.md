@@ -1,5 +1,12 @@
 # CMModelDrivenGridSolution changelog
 
+## Native startup refinement — 2026-11-18 (runtime acceptance pending)
+
+- Publish setup PCF 1.0.9 with a component-owned native command hub after the live dataset host returns empty outputs and never delivers the custom callback. Use the native command's documented form/grid arguments and public dataset Item references, owned instance state, one empty-dataset command refresh and only the setup's cached aliases. Do not query host DOM or private SDK state. Duplicate, detached, foreign and destroyed instances fail closed.
+- Ignore retained rows while the dataset is loading, disable commands until settled, retry the actual native binding and replace older in-page hub implementations. A regression fails before the retained-row fix and passes afterwards. Preserve the original startup retry budget across changing wrappers and GridOnLoad.
+- The companion Dynamics adapter now has a separate-script-frame regression and correction in CrmPackage. It locates only this owned hub in the immediate same-origin parent and stops obsolete retries without passing retained form context. No additional PCF build or UI change is required for that adapter correction.
+- Hub/adapter guards, direct-save UI probes, the full local suite and authoritative unmanaged build pass. Edge renders the current 1.0.9 control with all 15 R200S options. Native command/save acceptance, actual main-form activation, bookmark redirect and accepted final package remain pending. Existing hierarchy/header handlers, editors, general grid 1.0.122 and other form content are unchanged. Browser interaction is limited to Edge/Chrome extension tabs; exact rollback/deployment evidence is maintained in CrmPackage.
+
 ## Native blind-type setup and direct saves — 2026-11-17 (native browser acceptance pending)
 
 - Place the setup grid only inside the existing Item **Options** tab. The isolated sandbox preview preserves the complete main-form layout, original Options controls and handlers. Its main-form candidate recovers the exact original XML when the four owned additions are removed; the actual Item main form remains unchanged.
