@@ -1,5 +1,20 @@
 # CMModelDrivenGridSolution changelog
 
+## Retire blind-type experiment — 2026-11-23
+
+- Record the owner-requested sandbox reset to the existing native Item Options
+  model. Retire the standalone/native-preview deployment path in the companion
+  CRM repository, retaining the historical UI/control sources for reference.
+- Reuse native Item Options and Item Option Selections for the future Options
+  and Option Conditions design. Preserve the reusable grid, hierarchy arrows,
+  header open/close handlers and scrolling implementation; no PCF rebuild or
+  generic control deployment is part of this documentation change.
+- Reset evidence and actual acceptance are tracked in CrmPackage under
+  `outputs/deployment-backups/restore-live-options-sandbox-20261123/`.
+  Independent protected-state/absence checks, twelve signed-in native-form
+  checks and the final unmanaged package verification passed. Production was
+  read only. The original Main form and generic grid are unchanged.
+
 ## Native startup refinement — 2026-11-18 (runtime acceptance pending)
 
 - Publish setup PCF 1.0.9 with a component-owned native command hub after the live dataset host returns empty outputs and never delivers the custom callback. Use the native command's documented form/grid arguments and public dataset Item references, owned instance state, one empty-dataset command refresh and only the setup's cached aliases. Do not query host DOM or private SDK state. Duplicate, detached, foreign and destroyed instances fail closed.

@@ -1,5 +1,22 @@
 # Blind type setup
 
+**Retired at the owner request on 2026-11-23.** The sandbox experiment was removed
+and the original native Item Options form restored. The original Options
+tab already matches production. Future Options and Option Conditions authoring
+must reuse the existing `cm_itemoption` / `cm_itemoptionselection` model instead
+of this parallel JSON store and projection. The generic grid and its hierarchy,
+header toggles and scrolling code are retained; no general PCF changes are needed.
+
+The environment-locked reset, rollback and acceptance record are in the CRM
+repository under `CrmPackage/BlindTypeSetup/Restore-LiveOptionsSandbox.ps1` and
+`CrmPackage/outputs/deployment-backups/restore-live-options-sandbox-20261123/`.
+The old demo and preview links are retired. Use the original sandbox R200S:
+[R200S Item form](https://capricornsandbox.crm4.dynamics.com/main.aspx?appid=f29c988c-f0cc-f011-8544-6045bde18fc1&pagetype=entityrecord&etn=cm_item&id=772fbc3a-7b53-f111-a824-7c1e52205a7d&formid=30a905c9-2cf1-f011-8406-002248a34d35).
+
+## Historical experiment
+
+The following is retained implementation history, not the current authoring path.
+
 Place the grid inside the existing Item **Options** tab. Preserve the Item main
 form, its other tabs, its existing Options controls and its handlers. The isolated
 sandbox preview copies that main-form layout and adds one setup section to Options;
