@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="CraigMansell" constructor="CMModelDrivenGrid" version="1.0.122" display-name-key="DrivenGrid_Display" description-key="DrivenGrid_Description" control-type="standard">
+  <control namespace="CraigMansell" constructor="CMModelDrivenGrid" version="1.0.123" display-name-key="DrivenGrid_Display" description-key="DrivenGrid_Description" control-type="standard">
 
     <!--external-service-usage node declares whether this 3rd party PCF control is using external service or not, if yes, this control will be considered as premium and please also add the external domain it is using.
     If it is not using any external service, please set the enabled="false" and DO NOT add any domain below. The "enabled" will be false by default.
@@ -62,6 +62,7 @@
     <property name="RememberColumnLayout" display-name-key="RememberColumnLayout_Display" description-key="RememberColumnLayout_Description" of-type="TwoOptions" usage="input" required="false" default-value="true"/>
     <property name="NavigationTypes" display-name-key="NavigationTypes_Display" description-key="NavigationTypes_Description" of-type="SingleLine.Text" usage="input" required="false" default-value="all"/>
     <property name="EnableLookupDialog" display-name-key="EnableLookupDialog_Display" description-key="EnableLookupDialog_Description" of-type="TwoOptions" usage="input" required="false" default-value="true"/>
+    <property name="EnableComponentAvailability" display-name-key="EnableComponentAvailability_Display" description-key="EnableComponentAvailability_Description" of-type="TwoOptions" usage="input" required="false" default-value="false"/>
     <resources>
       <code path="index.ts" order="1"/>
       <resx path="strings/CMModelDrivenGrid.1033.resx" version="1.0.0" />

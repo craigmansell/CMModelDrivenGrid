@@ -223,6 +223,7 @@ export interface GridProps {
 		recordId?: string
 	) => Promise<{ id: string; name: string }[]>;
 	onBrowseLookup?: (entityType: string, searchTerm: string, columnName: string, recordId: string) => Promise<{id: string; name: string} | undefined>;
+	lookupContextVersion?: number;
 	infiniteScroll?: boolean;
 	item?: DataSet;
 }
@@ -666,6 +667,7 @@ export const Grid = React.memo((props: GridProps) => {
 		lookupTargetEntityMap,
 		onSelectAllRecords,
 		onSearchLookup,
+		lookupContextVersion,
 		onBrowseLookup,
 		columnOptions,
 		infiniteScroll = true,
@@ -2041,7 +2043,7 @@ export const Grid = React.memo((props: GridProps) => {
 					const entityType = cellData.lookupEntityType;
 					return (
 						<EditingLookup
-							key={cellKey}
+							key={`${cellKey}:${lookupContextVersion ?? 0}`}
 							initialDisplayValue={cellData.value}
 							ariaLabel={`Edit ${column.name}`}
 							onSearch={(term) => onSearchLookup(entityType, term, cellData.columnName, cellData.recordId)}
@@ -2223,6 +2225,7 @@ export const Grid = React.memo((props: GridProps) => {
 			onOpenLookup,
 			onNavigate,
 			onSearchLookup,
+			lookupContextVersion,
 			onBrowseLookup,
 			onUpdateLookupCell,
 			theme.palette.green,

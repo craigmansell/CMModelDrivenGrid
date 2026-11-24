@@ -317,4 +317,6 @@
   <data name="NavigationTypes_Description" xml:space="preserve"><value>Use all, primary or none for lookup links. Enable lookup links must also be enabled.</value></data>
   <data name="EnableLookupDialog_Display" xml:space="preserve"><value>Allow full lookup dialog</value></data>
   <data name="EnableLookupDialog_Description" xml:space="preserve"><value>Add More records to lookup editing using the supported Power Apps lookup dialog. Selected records are checked against configured restrictions before saving.</value></data>
+  <data name="EnableComponentAvailability_Display" xml:space="preserve"><value>Apply component availability rules</value></data>
+  <data name="EnableComponentAvailability_Description" xml:space="preserve"><value>Use the entry's saved Calculator, Condition and Result records when searching and saving components. Requires the entry availability form library.</value></data>
 </root>

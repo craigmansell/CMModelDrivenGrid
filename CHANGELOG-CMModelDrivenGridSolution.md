@@ -1,5 +1,25 @@
 # CMModelDrivenGridSolution changelog
 
+## Sandbox 1.0.123 / solution 1.0.102.0 — entry component availability — 2026-11-24
+
+- Add a default-off component availability connection for explicitly configured
+  entry grids. No catalogue IDs or width thresholds are embedded in DrivenGrid;
+  the saved Dataverse Calculator, Condition and Result supply the exclusions.
+- Scope unsaved dimensions to the owning entry and browser tab. Invalidate an
+  open lookup when dimensions change, reject stale responses and recheck before
+  saving. Reuse the form's supported filtered full lookup dialog. Save the parent
+  only when a newly selected component needs its unsaved dimension change.
+- Preserve the hierarchy arrows, header open/close, native selection/commands,
+  scrolling and other lookup behaviour. The three native Item setup subgrids
+  remain untouched in the companion CRM deployment.
+- Lookup connection tests, existing inline/grid/hierarchy/paging regressions and
+  signed server checks pass. Signed-in sandbox Chrome confirms R8024 at 900 mm,
+  exclusion at an unsaved 1000 mm, filtered full lookup, header toggles and valid
+  replacement saves. The CRM adapter clears warnings after a valid save.
+  Exact installed control/solution versions, fresh unmanaged rollback, final
+  exports and cleanup of temporary records are recorded in CrmPackage's
+  `r200s-r8024-width-availability-sandbox-20261124` evidence directory.
+
 ## Retire blind-type experiment — 2026-11-23
 
 - Record the owner-requested sandbox reset to the existing native Item Options

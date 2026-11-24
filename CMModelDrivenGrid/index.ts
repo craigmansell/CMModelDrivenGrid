@@ -10,6 +10,7 @@ import { needsServerFilter, supportedFilterSuperset, collectFilterCandidates, re
 import { NativeHierarchySelection, isHierarchyRoot } from "./nativeHierarchy";
 import { MAX_SELECTED_RECORDS, SelectAllRequest, SelectAllResult, selectionResult, checkSelectionCancelled } from './recordSelection';
 import { readColumnEditability } from './columnEditability';
+import { ComponentAvailabilityClient, availabilityClause } from './componentAvailability';
 
 interface LookupFilterConfig {
 	default?: string;
@@ -96,6 +97,11 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 	private nativeSelectionReset = 0;
 	private nativeSelectionError = '';
 	private isDestroyed = false;
+	private componentAvailability: ComponentAvailabilityClient | undefined;
+	private availability = (): ComponentAvailabilityClient | undefined => {
+		if (this.context.parameters.EnableComponentAvailability?.raw !== true) return undefined;
+		return this.componentAvailability ?? (this.componentAvailability = new ComponentAvailabilityClient(() => this.context.webAPI, () => this.renderGrid()));
+	};
 	private logicalRootFilter: FilterExpression | undefined;
 	private ownsRootFilter = false;
 	private filterViewKey = '';
@@ -1234,6 +1240,9 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		recordId?: string
 	): Promise<{ id: string; name: string }[]> => {
 		const { primaryIdAttr, primaryNameAttr, lookupFields } = await this.getEntityMeta(entityType);
+		const availability = this.availability();
+		const governed = recordId && availability?.supports(this.context.parameters.records.getTargetEntityType(), columnName, entityType)
+			? await availability.current(this.context.parameters.records.getTargetEntityType(), recordId) : undefined;
 		const safeSearch = (searchTerm ?? "").trim().replace(/'/g, "''");
 		const searchClause = safeSearch ? `contains(${primaryNameAttr},'${safeSearch}')` : "";
 		const rawConfiguredClause = await this.resolveLookupFilterTokens(
@@ -1241,7 +1250,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 			recordId
 		);
 		const toQuery = (configuredClause: string): string => {
-			const combinedFilter = [searchClause, configuredClause]
+			const combinedFilter = [searchClause, configuredClause, governed ? availabilityClause(governed.result.excludedComponentIds) : '']
 				.filter((clause) => clause && clause.trim().length > 0)
 				.map((clause) => `(${clause.trim()})`)
 				.join(" and ");
@@ -1260,6 +1269,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		try {
 			const query = toQuery(configuredClause);
 			const results = await this.context.webAPI.retrieveMultipleRecords(entityType, query);
+			governed?.assertCurrent();
 			return mapResults(results);
 		} catch (error) {
 			const missingProperty = this.getMissingODataPropertyName(error)?.toLowerCase();
@@ -1274,6 +1284,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 
 			const retryQuery = toQuery(retriedConfiguredClause);
 			const retryResults = await this.context.webAPI.retrieveMultipleRecords(entityType, retryQuery);
+			governed?.assertCurrent();
 			return mapResults(retryResults);
 		}
 	};
@@ -1291,7 +1302,10 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		assertCurrent();
 		childLogicalName(entityType);
 		const options: ComponentFramework.UtilityApi.LookupOptions & {searchText: string} = {allowMultiSelect: false, defaultEntityType: entityType, entityTypes: [entityType], searchText: searchTerm};
-		const result = await this.context.utils.lookupObjects(options);
+		const availability = this.availability();
+		const governed = availability?.supports(sourceEntity, columnName, entityType);
+		const chosen = governed ? await availability!.browse(sourceEntity, recordId, searchTerm) : undefined;
+		const result = governed ? (chosen ? [{...chosen, entityType}] : []) : await this.context.utils.lookupObjects(options);
 		assertCurrent();
 		if (!result?.length) return undefined;
 		if (result.length !== 1 || result[0].entityType.toLowerCase() !== entityType.toLowerCase()) throw new Error('Choose one record from the correct table.');
@@ -1321,6 +1335,8 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 			this.assertEditingAllowed(recordId);
 			const editableColumn = this.getEditableDatasetColumn(columnName);
 			const originalDataType = editableColumn.dataType;
+			const availability = this.availability();
+			if (targetId && availability?.supports(entityType, columnName, targetEntityType)) await availability.assertAllowed(entityType, recordId, targetId);
 
 			// Ensure the nav property map is fully populated before building candidates.
 			if (this.lookupNavPropertyFetchPromise) {
@@ -1618,6 +1634,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 				columnOptions: this.columnOptions,
 				lookupTargetEntityMap: this.lookupTargetEntityMap,
 				onSearchLookup: this.onSearchLookup,
+				lookupContextVersion: this.componentAvailability?.revision,
 				onBrowseLookup: this.context.parameters.EnableLookupDialog?.raw !== false && typeof this.context.utils?.lookupObjects === 'function' ? this.onBrowseLookup : undefined,
 				onUpdateLookupCell: this.onUpdateLookupCell,
 				onSelectAllRecords: this.onSelectAllRecords,
@@ -1825,6 +1842,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 	 */
 	public destroy(): void {
 		this.isDestroyed = true;
+		this.componentAvailability?.dispose();
 		this.nativeHierarchy?.dispose();
 		this.childRecords = {};
 		this.childLoader = undefined;
