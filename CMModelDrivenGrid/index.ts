@@ -1250,7 +1250,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 			recordId
 		);
 		const toQuery = (configuredClause: string): string => {
-			const combinedFilter = [searchClause, configuredClause, governed ? availabilityClause(governed.result.excludedComponentIds) : '']
+			const combinedFilter = [searchClause, configuredClause, governed ? availabilityClause(governed.result.excludedComponentIds, governed.result.itemOptionScopeApplied ? governed.result.allowedComponentIds : undefined) : '']
 				.filter((clause) => clause && clause.trim().length > 0)
 				.map((clause) => `(${clause.trim()})`)
 				.join(" and ");
@@ -1368,6 +1368,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 						? { [`${bindName}@odata.bind`]: null }
 						: { [`${bindName}@odata.bind`]: `/${entitySetName}(${this.normalizeGuid(targetId)})` };
 					await this.context.webAPI.updateRecord(entityType, this.normalizeGuid(recordId), updateData);
+					if (columnName.toLowerCase() === 'cm_component') void availability?.selectionSaved(entityType, recordId);
 					this.context.parameters.records.refresh();
 					return;
 				} catch (error) {
@@ -1608,7 +1609,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 				commandError: this.rootFilterError || this.nativeSelectionError || this.columnEditabilityError || undefined,
 				queryErrorVersion: this.queryErrorVersion,
 				disableSelection: this.rootFilterRecoveryRequired,
-				childRows: this.context.parameters.EnableChildRows?.raw ? {loadPage:this.loadChildPage,hasChildren:this.checkChildRows,revision:this.childRevision,
+				childRows: this.context.parameters.EnableChildRows?.raw ? {loadPage:this.loadChildPage,hasChildren:this.context.parameters.ShowEmptyChildArrows?.raw ? undefined : this.checkChildRows,revision:this.childRevision,
 					readOnly:!!this.context.parameters.DisableChildEditing?.raw || this.context.mode.isControlDisabled} : undefined,
 				width: allocatedWidth,
 				height: allocatedHeight,

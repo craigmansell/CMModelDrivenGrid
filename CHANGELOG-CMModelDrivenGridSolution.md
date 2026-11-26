@@ -1,5 +1,38 @@
 # CMModelDrivenGridSolution changelog
 
+## Sandbox 1.0.125 / solution 1.0.104.0 — Quotation component scope — 2026-11-26
+
+- Consume explicit configured component IDs when the availability service applies
+  Item option/Department scope. Combine that set with existing exclusions in
+  inline search; recheck full lookup selections and save against the same scope.
+  Empty/malformed scope fails closed. No catalogue IDs or width thresholds are
+  embedded in the control; existing unscoped template/order/child paths remain.
+- Preserve the existing Grid/HierarchyGrid editors, arrows, header toggles,
+  paging, selection and command integration. The companion sandbox deployment
+  changes only quotation-line option bindings; the Item form's three native
+  subgrids and its layout remain unchanged. Do not reseed choices or clears.
+- Add default-off ShowEmptyChildArrows, enabled only on these quotation grids,
+  to preserve native arrows on empty branches. Other installed grids keep their
+  existing leaf-arrow behavior; hierarchy handlers and child commands are intact.
+- Local availability regressions cover blank/900/1000 widths, assigned
+  non-default choices, foreign and empty sets, browse validation and stale
+  responses. Full existing React grid/hierarchy harness checks and the single
+  authoritative unmanaged build precede signed-in sandbox acceptance.
+- Notify the owning quotation connection after a committed Component change or
+  clear so its measurement validation can resume existing live calculation.
+  Notification failure never retries or reports failure for a committed update;
+  template and order paths receive no new notification.
+- Signed-in sandbox Chrome verifies three Barrel Type choices at 900 mm and
+  two at 1000 mm in both inline and full lookups, valid replacement/save,
+  intentional clears, blank measurements, native Edit/Refresh, header toggles
+  and empty-branch arrows. The companion quotation bridge uses column validity
+  to pause the pre-existing live-save loop until the choice is valid. All four
+  final unmanaged package comparisons pass; the Item's three native grids and
+  existing calculation code are unchanged. Evidence: quotation-component-picker-sandbox-20261126-native-arrows.
+- A separate unchanged costing rule on the second quotation form deleted the
+  owned test rows when R200S/Retail had no cost-price calculation method. This
+  is recorded in the CRM changelog and trace evidence, not changed by the grid.
+
 ## Sandbox 1.0.123 / solution 1.0.102.0 — entry component availability — 2026-11-24
 
 - Add a default-off component availability connection for explicitly configured

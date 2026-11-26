@@ -8,11 +8,15 @@ const guid = (value: string): string => {
 };
 export interface AvailabilityContext {width:number|null;drop:number|null;itemId:string|null;departmentId:string|null}
 interface HostResponse {type:string;nonce?:string;ready?:boolean;error?:string;context?:AvailabilityContext;selection?:{id:string;name:string;entityType:string}[]}
-export interface AvailabilityResult {entryTable:string;entryId:string;excludedComponentIds:string[];governedComponentIds:string[]}
+export interface AvailabilityResult {entryTable:string;entryId:string;excludedComponentIds:string[];governedComponentIds:string[];itemOptionScopeApplied?:boolean;allowedComponentIds?:string[]|null}
 interface WebApi {retrieveRecord(table:string,id:string,options?:string):Promise<ComponentFramework.WebApi.Entity>}
-export function availabilityClause(ids: string[]): string {
-    return ids.map(id=>`cm_componentid ne ${guid(id)}`).map(clause=>`(${clause})`).join(' and ');
+export function availabilityClause(ids: string[],allowed?:string[]|null): string {
+    const excluded=ids.map(id=>`cm_componentid ne ${guid(id)}`).map(clause=>`(${clause})`).join(' and ');
+    if(!Array.isArray(allowed))return excluded;
+    const configured=allowed.length?allowed.map(id=>`cm_componentid eq ${guid(id)}`).join(' or '):'cm_componentid eq 00000000-0000-0000-0000-000000000000';
+    return [configured,excluded].filter(Boolean).map(clause=>`(${clause})`).join(' and ');
 }
+const permitted=(result:AvailabilityResult,id:string):boolean=>!result.excludedComponentIds.includes(id)&&(!result.itemOptionScopeApplied||!!result.allowedComponentIds?.includes(id));
 export class ComponentAvailabilityClient {
     revision=0;
     private channels=new Map<string,BroadcastChannel>();
@@ -54,8 +58,13 @@ export class ComponentAvailabilityClient {
         const body=await response.json() as {error?:{message?:string};ResultJson?:string};
         if(!response.ok||typeof body.ResultJson!=='string')throw new Error(body.error?.message??'Component availability could not be checked.');
         const result=JSON.parse(body.ResultJson) as AvailabilityResult;
-        if(!Array.isArray(result.excludedComponentIds)||!Array.isArray(result.governedComponentIds))throw new Error('Invalid component rule response.');
-        result.excludedComponentIds.forEach(guid);return result;
+        if(!Array.isArray(result.excludedComponentIds)||!Array.isArray(result.governedComponentIds)||
+            (table==='cm_quotationlineoption'&&typeof result.itemOptionScopeApplied!=='boolean')||
+            (result.itemOptionScopeApplied&&!Array.isArray(result.allowedComponentIds)))throw new Error('Invalid component rule response.');
+        result.excludedComponentIds=result.excludedComponentIds.map(guid);
+        result.governedComponentIds=result.governedComponentIds.map(guid);
+        if(result.itemOptionScopeApplied)result.allowedComponentIds=result.allowedComponentIds!.map(guid);
+        return result;
     }
     async current(table:string,id:string):Promise<{result:AvailabilityResult;assertCurrent:()=>void}> {
         const parent=await this.owner(table,id),state=await this.host(parent,'state');
@@ -65,17 +74,17 @@ export class ComponentAvailabilityClient {
     }
     async assertAllowed(table:string,id:string,component:string):Promise<void> {
         const chosen=guid(component),current=await this.current(table,id);
-        if(current.result.excludedComponentIds.includes(chosen))throw new Error('This component is not available for the current dimensions. Choose another component before saving.');
+        if(!permitted(current.result,chosen))throw new Error('This component is not available for this product, option, Department and measurements. Choose another component before saving.');
         current.assertCurrent();
         // Save the parent only when the chosen component needs its unsaved size.
         // A replacement valid at both sizes can be saved first, allowing an
         // existing incompatible choice to be replaced before widening the entry.
         const saved=await this.evaluate(table,id,null);current.assertCurrent();
-        if(saved.excludedComponentIds.includes(chosen)){
+        if(!permitted(saved,chosen)){
             const parent=await this.owner(table,id),state=await this.host(parent,'state');
             await this.host(parent,'save',{context:state.context});
             const committed=await this.evaluate(table,id,null);
-            if(committed.excludedComponentIds.includes(chosen))throw new Error('Save the entry dimensions before choosing this component.');
+            if(!permitted(committed,chosen))throw new Error('Save the entry dimensions before choosing this component.');
         }
     }
     async browse(table:string,id:string,searchTerm:string):Promise<{id:string;name:string}|undefined> {
@@ -83,7 +92,13 @@ export class ComponentAvailabilityClient {
         const selected=response.selection;if(!selected?.length)return undefined;
         if(selected.length!==1||selected[0].entityType!=='cm_component')throw new Error('Choose one component.');
         const choice={id:guid(selected[0].id),name:selected[0].name};
-        const current=await this.current(table,id);if(current.result.excludedComponentIds.includes(choice.id))throw new Error('The component is no longer available for these dimensions.');return choice;
+        const current=await this.current(table,id);if(!permitted(current.result,choice.id))throw new Error('The component is no longer available for this option and its rules.');return choice;
+    }
+    async selectionSaved(table:string,id:string):Promise<void> {
+        if(table!=='cm_quotationlineoption'||this.disposed)return;
+        // The record has already been saved. A host notification failure must
+        // never report a failed save or retry that committed update.
+        try{const parent=await this.owner(table,id);await this.host(parent,'revalidate',{optionTable:table});}catch{/* Data/subgrid load also revalidates the host. */}
     }
     dispose():void {
         this.disposed=true;for(const channel of this.channels.values())channel.close();this.channels.clear();

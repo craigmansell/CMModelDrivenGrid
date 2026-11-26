@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="CraigMansell" constructor="CMModelDrivenGrid" version="1.0.123" display-name-key="DrivenGrid_Display" description-key="DrivenGrid_Description" control-type="standard">
+  <control namespace="CraigMansell" constructor="CMModelDrivenGrid" version="1.0.125" display-name-key="DrivenGrid_Display" description-key="DrivenGrid_Description" control-type="standard">
 
     <!--external-service-usage node declares whether this 3rd party PCF control is using external service or not, if yes, this control will be considered as premium and please also add the external domain it is using.
     If it is not using any external service, please set the enabled="false" and DO NOT add any domain below. The "enabled" will be false by default.
@@ -36,6 +36,7 @@
     <property name="SubGridHeight" display-name-key="SubGridHeight_Disp" description-key="SubGridHeight_Desc" of-type="Whole.None" usage="input" required="false"/>
 
     <property name="EnableChildRows" display-name-key="EnableChildRows_Display" description-key="EnableChildRows_Description" of-type="TwoOptions" usage="input" required="false" default-value="false"/>
+    <property name="ShowEmptyChildArrows" display-name-key="ShowEmptyChildArrows_Display" description-key="ShowEmptyChildArrows_Description" of-type="TwoOptions" usage="input" required="false" default-value="false"/>
     <property name="EnableNativeChildSelection" display-name-key="EnableNativeChildSelection_Display" description-key="EnableNativeChildSelection_Description" of-type="TwoOptions" usage="input" required="false" default-value="false"/>
     <property name="DisableChildEditing" display-name-key="DisableChildEditing_Display" description-key="DisableChildEditing_Description" of-type="TwoOptions" usage="input" required="false" default-value="false"/>
     <property name="EnableChildCommands" display-name-key="EnableChildCommands_Display" description-key="EnableChildCommands_Description" of-type="TwoOptions" usage="input" required="false" default-value="false"/>

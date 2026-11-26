@@ -23,6 +23,7 @@
 		"test:inline-edit": "tsx scripts/local-inline-edit-test.tsx",
 		"test:cell-selection": "tsx scripts/local-cell-selection-test.tsx",
 		"test:grid": "tsx scripts/local-grid-regression-test.tsx",
+		"test:component-availability": "tsx scripts/local-component-availability-test.ts && tsx scripts/local-quotation-component-scope-test.ts",
 		"test:dev-tools": "node scripts/local-dev-tools-test.js",
 		"refreshTypes": "pcf-scripts refreshTypes",
 		"push:dev": "pac pcf push --environment https://capricorndevelopment.crm4.dynamics.com/ --publisher-prefix cm --incremental",
