@@ -15,7 +15,7 @@ export function resolveGridHeight(allocated?: number, fixed?: number, measured?:
     return -1;
 }
 
-/** Fill the supplied tab/container without inspecting or modifying Dynamics DOM. */
+/** Measure only the component's content, including its own empty message. */
 export function measureGridContentHeight(host: HTMLElement): number | undefined {
     const layout = host.querySelector<HTMLElement>('.cm-grid-layout');
     const details = host.querySelector<HTMLElement>('.cm-grid-details');
@@ -30,7 +30,10 @@ export function measureGridContentHeight(host: HTMLElement): number | undefined 
     const scroll = host.querySelector<HTMLElement>('[data-is-scrollable="true"]');
     const scrollbar = scroll ? Math.max(0, scroll.offsetHeight - scroll.clientHeight) : 0;
     const style = window.getComputedStyle(grid);
-    const content = Math.max(details.getBoundingClientRect().height, host.querySelector('.noRecords') ? 160 : 0);
+    const empty = layout.querySelector(':scope > .cm-grid-surface > .noRecords');
+    const headerHeight = details.querySelector('.ms-DetailsHeader')?.getBoundingClientRect().height ?? 0;
+    const emptyHeader = headerHeight > 0 ? headerHeight : 42;
+    const content = empty ? emptyHeader + 48 : details.getBoundingClientRect().height;
     if (content <= 0) return undefined;
     return Math.ceil(content + chrome + scrollbar + pixels(style.borderTopWidth) + pixels(style.borderBottomWidth) + 1);
 }
@@ -117,7 +120,7 @@ export function ResponsiveGrid({ fixedHeight, fitToRows, ...props }: ResponsiveG
     }, [automatic, fitToRows]);
 
     const height = fitToRows ? compactHeight ?? requestedHeight : automatic ? resolveGridHeight(undefined, undefined, measuredHeight) : requestedHeight;
-    return <div ref={host} className="cm-grid-host" style={{
+    return <div ref={host} className={`cm-grid-host${fitToRows ? ' cm-grid-fit-to-rows' : ''}`} style={{
         height: fitToRows ? height > 0 ? height : 'auto' : automatic ? '100%' : requestedHeight, width: '100%', minHeight: 0, minWidth: 0,
     }}>
         <HierarchyGrid {...props} height={height}/>

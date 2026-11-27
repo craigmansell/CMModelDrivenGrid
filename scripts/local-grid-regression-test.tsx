@@ -230,8 +230,17 @@ async function testCompactSizing(): Promise<void> {
 		assert(grid().style.height==='500px','Loading keeps its existing viewport.');
 		await act(async()=>{render({itemsLoading:false});});
 		assert(grid().style.height==='177px','Complete refreshed results must compact again.');
+		contentHeight=42;
+		await act(async()=>{render({records:{},sortedRecordIds:[],totalResultCount:0});});
+		await resize();
+		assert(host.classList.contains('cm-grid-fit-to-rows') && grid().style.height==='127px','An empty compact grid must reserve only its header, 48px message and footer.');
+		contentHeight=140;
+		await act(async()=>{render({records:{'compact-parent':record},sortedRecordIds:['compact-parent'],totalResultCount:1});});
+		await resize();
+		assert(grid().style.height==='177px','Rows returning to an empty grid must grow the viewport again.');
 		await act(async()=>{render({},false);});
 		assert(grid().style.height==='500px','Controls without FitToRows must keep full-height sizing.');
+		assert(!host.classList.contains('cm-grid-fit-to-rows'),'The compact empty style must be opt-in.');
 		assert(queries===0 && writes===0,'Content measurement must never query, sort, filter or save records.');
 	} finally {
 		ReactDOM.unmountComponentAtNode(container);

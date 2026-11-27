@@ -1,5 +1,29 @@
 # CMModelDrivenGridSolution changelog
 
+## Sandbox 1.0.127 / solution 1.0.106.0 — Compact empty quotation grid — 2026-11-27
+
+- FitToRows uses one 48-pixel empty message row above the footer, with a small
+  inline icon. Restrict the style to the root compact grid; empty child panels
+  and full-tab controls retain their existing layout. Align only the supplied
+  PCF container to its content. Do not inspect or change Dynamics ancestors.
+- Extend the local harness and regression checks for populated → empty →
+  populated sizing, while retaining hierarchy expansion, header toggles,
+  selection, bounded scrolling, loading and paging behavior. Native commands,
+  editing, saving and component availability handlers remain unchanged.
+- Companion wublCore 1.0.0.4 changes only the quotation grid cell's native
+  spare-space expansion on the two existing main forms. Evidence and fresh
+  full unmanaged rollback: quotation-empty-grid-sandbox-20261127/ in the CRM
+  workspace deployment-backups folder. Sandbox acceptance recorded there.
+- Signed-in Edge verified the empty outer panel finishes 10 pixels below its
+  footer, the grid grows to all 13 R200S roots after reselect, expanded content
+  retains its bounded scroll viewport, and H-BLACK saves through a full reload.
+  Header toggles, all 13 arrows and repeated Product clear also pass. Original
+  data and all protected Item/Calculator configuration remain unchanged.
+- Final unmanaged exports match the compiled bundle, manifest and CSS. The
+  localized resource is unchanged; regenerated content-type declaration order
+  preserves every mapping. Companion core comparison permits only the two
+  exact native cell settings and preserves all 66 other payloads byte-for-byte.
+
 ## Sandbox 1.0.126 / solution 1.0.105.0 — Quotation grid spacing — 2026-11-27
 
 - Add default-off FitToRows for embedded grids. Measure only component-owned

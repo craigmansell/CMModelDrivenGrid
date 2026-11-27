@@ -376,6 +376,21 @@
 	font-size: 24px;
 }
 
+/* The root compact grid reserves one short message row above its footer.
+   Empty child grids and full-tab controls keep their existing layout. */
+.cm-grid-fit-to-rows > .cm-model-driven-grid > .cm-grid-layout > .cm-grid-surface > .noRecords {
+	bottom: 0;
+	flex-direction: row;
+}
+
+.cm-grid-fit-to-rows > .cm-model-driven-grid > .cm-grid-layout > .cm-grid-surface > .noRecords .ms-Icon {
+	font-size: 16px;
+}
+
+.cm-grid-fit-to-rows > .cm-model-driven-grid > .cm-grid-layout > .cm-grid-surface > .noRecords .ms-Text {
+	font-size: 14px;
+}
+
 .cm-model-driven-grid input::-ms-clear {
 	display: none;
 }

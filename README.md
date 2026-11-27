@@ -102,8 +102,11 @@ For an embedded grid that should finish directly after its rows, enable
 **Fit height to rows**. Complete results shrink to their content and grow with
 expanded branches up to the available height, then scroll. Loading and additional
 pages keep the scrolling viewport. Leave this setting Off for full-tab fill mode.
+Empty results reserve one 48-pixel message row between the header and footer.
 The quotation options sandbox bindings also reduce only that grid cell's minimum
-rowspan; native command bars, queries, editing and save handlers are unchanged.
+rowspan and disable native spare-space expansion; native command bars, queries,
+editing and save handlers are unchanged. The supplied PCF container aligns to
+its content; the control never inspects or changes Dynamics ancestors.
 Run `node scripts/start-spacing-demo.js` for the sample-only spacing harness.
 
 ### Excel-preserving additions (1.0.112)

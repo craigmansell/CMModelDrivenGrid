@@ -1563,6 +1563,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		const rawAllocatedWidth = this.context.mode.allocatedWidth as unknown;
 		const fitToRows = this.context.parameters.FitToRows?.raw === true;
 		this.container.style.height = fitToRows ? "auto" : "100%";
+		this.container.style.alignSelf = fitToRows ? "flex-start" : "";
 		const rawAllocatedHeight = this.context.mode.allocatedHeight as unknown;
 		let allocatedWidth = parseAllocatedSize(rawAllocatedWidth);
 		let allocatedHeight = parseAllocatedSize(rawAllocatedHeight);

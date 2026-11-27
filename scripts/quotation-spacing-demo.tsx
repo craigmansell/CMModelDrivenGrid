@@ -16,8 +16,9 @@ const columns=[
 ].map((column,order)=>({...column,order,alias:column.name})) as ComponentFramework.PropertyHelper.DataSetApi.Column[];
 const resources={getString:(key:string)=>({'Label_Grid_Footer_RecordCount':'{0} records ({1} Selected)','Label_NoRecords':'No records found','Label_Grid_Footer':'Page {0}'}[key]??key),getResource:()=>undefined} as ComponentFramework.Resources;
 type DemoRow={id:string;order:number;option:string;component:{id:string;name:string;entityType:string}|null;calculator:string;cost:number};
+const sampleRows=():DemoRow[]=>optionNames.map((option,order)=>({id:`row-${order}`,order,option,component:order===1?{id:'tube',name:'R8024 | 40mm Roller Tube',entityType:'cm_component'}:null,calculator:order===0?'':order===1||order===8?'Width':order===5?'Drop':'Quantity',cost:order===2?2.59:0}));
 function App(): React.ReactElement {
-    const [rows,setRows]=React.useState<DemoRow[]>(()=>optionNames.map((option,order)=>({id:`row-${order}`,order,option,component:order===1?{id:'tube',name:'R8024 | 40mm Roller Tube',entityType:'cm_component'}:null,calculator:order===0?'':order===1||order===8?'Width':order===5?'Drop':'Quantity',cost:order===2?2.59:0})));
+    const [rows,setRows]=React.useState<DemoRow[]>(sampleRows);
     const [maximum,setMaximum]=React.useState(900),[fit,setFit]=React.useState(true),[selected,setSelected]=React.useState<string[]>([]),[writes,setWrites]=React.useState(0),[status,setStatus]=React.useState('Sample data only');
     const [sorts,setSorts]=React.useState<ComponentFramework.PropertyHelper.DataSetApi.SortStatus[]>([]);
     const records=Object.fromEntries(rows.map(row=>[row.id,{
@@ -28,7 +29,7 @@ function App(): React.ReactElement {
     const ordered=[...rows];if(sorts.length){const sort=sorts[0];ordered.sort((a,b)=>String((a as unknown as Record<string,unknown>)[sort.name]??'').localeCompare(String((b as unknown as Record<string,unknown>)[sort.name]??''))*(sort.sortDirection===1?-1:1));}
     return <>
         <header><strong>Quotation grid spacing · local harness</strong><span>{status} · Saves: {writes}</span></header>
-        <div className="tools"><button onClick={()=>setMaximum(900)}>Tall area</button><button onClick={()=>setMaximum(360)}>Short area</button><label><input type="checkbox" checked={fit} onChange={event=>setFit(event.target.checked)}/> Fit to rows</label><button onClick={()=>setRows(current=>[...current,...Array.from({length:40},(_,index)=>({id:`extra-${current.length+index}`,order:current.length+index,option:`Extra option ${current.length+index}`,component:null,calculator:'Quantity',cost:0}))])}>Add sample rows</button></div>
+        <div className="tools"><button onClick={()=>setMaximum(900)}>Tall area</button><button onClick={()=>setMaximum(360)}>Short area</button><label><input type="checkbox" checked={fit} onChange={event=>setFit(event.target.checked)}/> Fit to rows</label><button onClick={()=>setRows(current=>[...current,...Array.from({length:40},(_,index)=>({id:`extra-${current.length+index}`,order:current.length+index,option:`Extra option ${current.length+index}`,component:null,calculator:'Quantity',cost:0}))])}>Add sample rows</button><button onClick={()=>setRows([])}>Clear sample rows</button><button onClick={()=>setRows(sampleRows())}>Restore sample rows</button></div>
         <main><div className="commands"><span>{selected.length} Selected</span><button onClick={()=>setStatus('Refresh selected')}>Refresh</button></div>
         <ResponsiveGrid width={undefined} height={maximum} fitToRows={fit} columns={columns} records={records} sortedRecordIds={ordered.map(row=>row.id)}
             hasNextPage={false} hasPreviousPage={false} totalResultCount={rows.length} currentPage={1} sorting={sorts} filtering={undefined as unknown as ComponentFramework.PropertyHelper.DataSetApi.FilterExpression} resources={resources} itemsLoading={false}
