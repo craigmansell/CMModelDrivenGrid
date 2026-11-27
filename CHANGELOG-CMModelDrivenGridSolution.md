@@ -1,5 +1,30 @@
 # CMModelDrivenGridSolution changelog
 
+## Sandbox 1.0.126 / solution 1.0.105.0 — Quotation grid spacing — 2026-11-27
+
+- Add default-off FitToRows for embedded grids. Measure only component-owned
+  content and move the footer below complete results, growing with expansion
+  up to the available viewport. Preserve the loading/paging viewport so infinite
+  scrolling does not eagerly retrieve every page. Other/full-tab grids keep
+  their existing fill sizing. Enable only on quotation-line option bindings.
+- Stretch lookup editing across the cell and left-align compact result buttons.
+  Keep lookup filtering, validation, keyboard handling, clears, browse and save
+  handlers unchanged. Keep native commands, hierarchy and header toggles intact.
+- Installed as one unmanaged sandbox batch after the concurrent stock setup
+  finished, using a fresh full rollback. Local regression suites, type checks,
+  lint and the production solution build passed. Signed-in Chrome verified
+  13 hierarchy arrows, header open/close, internal scrolling and a component
+  saved through reload. The footer gap is 3.37 px; the editor fills the usable
+  cell width and choices have a 9.10 px left inset.
+- Preserve Item's three native grids, Calculator, plug-ins and existing business
+  records. Companion form settings are in wublCore 1.0.0.3. Final evidence and
+  full unmanaged packages: CrmPackage/outputs/deployment-backups/
+  quotation-grid-spacing-sandbox-20261127-after-stock/ in the CRM workspace.
+- Exact final grid export comparison passed: only bundle, manifest and localized
+  labels changed; CSS and license are identical. The companion core comparison
+  preserves all 66 other payloads and attributes the separate stock setup's
+  Component form through its independent sealed plan and UI receipt.
+
 ## Sandbox 1.0.125 / solution 1.0.104.0 — Quotation component scope — 2026-11-26
 
 - Consume explicit configured component IDs when the availability service applies

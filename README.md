@@ -98,6 +98,14 @@ navigation and commands. No DOM outside the PCF's own container is read or chang
 Try the local fixture at [full-tab preview](http://127.0.0.1:8183/?fulltab=1).
 Real form configuration and responsive acceptance still require a signed-in test.
 
+For an embedded grid that should finish directly after its rows, enable
+**Fit height to rows**. Complete results shrink to their content and grow with
+expanded branches up to the available height, then scroll. Loading and additional
+pages keep the scrolling viewport. Leave this setting Off for full-tab fill mode.
+The quotation options sandbox bindings also reduce only that grid cell's minimum
+rowspan; native command bars, queries, editing and save handlers are unchanged.
+Run `node scripts/start-spacing-demo.js` for the sample-only spacing harness.
+
 ### Excel-preserving additions (1.0.112)
 
 `EnableJumpBar` defaults to false; when enabled its All button removes only the
@@ -170,6 +178,7 @@ that every native list restriction is duplicated.
 | `InfiniteScroll` | Loads the next page when the end-of-grid sentinel becomes visible. Enabled by default. |
 | `MaxRows` | Optional Dataverse dataset page size. |
 | `SubGridHeight` | Optional fixed height, in pixels, for form subgrids. |
+| `FitToRows` | Fit complete embedded results to their content, capped at the available height. Default false retains full-tab fill sizing. |
 | `EnableGrouping` / `EnableAggregation` | Enable complete-level groups and numeric summaries. Defaults true in this candidate. |
 | `EnableColumnMoving` | Header drag/reorder and Move left/right. |
 | `EnableMultipleSelection` / `EnableRangeSelection` | Multiple-row selection and mouse rectangular copy, independently switchable. |

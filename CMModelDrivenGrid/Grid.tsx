@@ -518,7 +518,8 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, aria
 					position: "fixed",
 					top: dropdownRect.bottom,
 					left: dropdownRect.left,
-					minWidth: Math.max(dropdownRect.width, 200),
+					width: Math.max(dropdownRect.width, 200),
+					maxWidth: "calc(100vw - 16px)",
 					maxHeight: 200,
 					overflowY: "auto",
 					background: "white",
@@ -552,7 +553,7 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, aria
 							key={r.id}
 							id={`${resultListId}-${index}`}
 							role="option" aria-selected={activeResult === index} tabIndex={-1}
-							styles={{ root: { width: "100%", textAlign: "left", height: 28, paddingLeft: 8, background: activeResult === index ? '#deecf9' : undefined } }}
+							styles={{ root: { width: "100%", minWidth: 0, justifyContent: "flex-start", textAlign: "left", height: 28, padding: "0 8px", background: activeResult === index ? '#deecf9' : undefined }, flexContainer: { width: "100%", justifyContent: "flex-start", minWidth: 0 }, label: { margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }}
 							aria-pressed={activeResult === index}
 							onMouseDown={(e) => e.preventDefault()}
 							onClick={() => handleSelect(r.id, r.name)}
@@ -567,7 +568,7 @@ const EditingLookup: React.FC<EditingLookupProps> = ({ initialDisplayValue, aria
 
 	return (
 		<>
-			<div ref={containerRef} style={{ display: "flex", alignItems: "center" }}>
+			<div ref={containerRef} className="cm-grid-lookup-editor" style={{ display: "flex", alignItems: "center", width: "100%", minWidth: 0 }}>
 				<TextField
 					autoFocus
 					ariaLabel={ariaLabel}

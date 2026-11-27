@@ -185,6 +185,61 @@ function updateGrid(overrides: Partial<GridProps>): void {
 	ReactDOM.render(React.createElement(Grid, currentGridProps), container);
 }
 
+async function testCompactSizing(): Promise<void> {
+	const { ResponsiveGrid } = require('../CMModelDrivenGrid/ResponsiveGrid') as typeof import('../CMModelDrivenGrid/ResponsiveGrid');
+	const priorObserver = globalThis.ResizeObserver;
+	const observers: CompactObserver[] = [];
+	class CompactObserver {
+		disconnected = false;
+		constructor(private callback: ResizeObserverCallback) { observers.push(this); }
+		observe(): void { undefined; }
+		unobserve(): void { undefined; }
+		disconnect(): void { this.disconnected = true; }
+		resize(): void { this.callback([], this as unknown as ResizeObserver); }
+	}
+	Object.defineProperty(globalThis, 'ResizeObserver', {value:CompactObserver, configurable:true, writable:true});
+	const column = {name:'name',displayName:'Name',dataType:'SingleLine.Text',order:0,visualSizeFactor:180} as ComponentFramework.PropertyHelper.DataSetApi.Column;
+	const record = makeRecord('compact-parent',{name:'Parent'},{name:'Parent'});
+	let queries = 0, writes = 0, selected: string[] = [];
+	let active = createGridProps({height:500,columns:[column],records:{'compact-parent':record},sortedRecordIds:['compact-parent'],setSelectedRecords:ids=>{selected=ids;},onSort:()=>{queries++;},onFilter:()=>{queries++;},onUpdateCell:async()=>{writes++;}});
+	const render = (changes: Partial<GridProps> = {}, fitToRows = true) => {
+		active = {...active,...changes};
+		ReactDOM.render(<ResponsiveGrid {...active} fitToRows={fitToRows}/>,container);
+	};
+	try {
+		await act(async()=>{ReactDOM.unmountComponentAtNode(container);render();});
+		const host=container.querySelector<HTMLElement>('.cm-grid-host')!;
+		const details=host.querySelector<HTMLElement>('.cm-grid-details')!;
+		const footer=host.querySelector<HTMLElement>('.cm-grid-footer')!;
+		let contentHeight=140;
+		const rect=(height:number): DOMRect=>({height,width:1000,top:0,bottom:height,left:0,right:1000,x:0,y:0,toJSON:()=>({})});
+		details.getBoundingClientRect=()=>rect(contentHeight);
+		footer.getBoundingClientRect=()=>rect(36);
+		const resize=async()=>{await act(async()=>{observers.filter(observer=>!observer.disconnected).forEach(observer=>observer.resize());await new Promise(resolve=>setTimeout(resolve,10));});};
+		const grid=()=>host.querySelector<HTMLElement>('.cm-model-driven-grid')!;
+		await resize();
+		assert(grid().style.height==='177px' && host.style.height==='177px','Complete short results must put the footer directly below content, without the 320px minimum.');
+		await act(async()=>{(grid().querySelector('.ms-DetailsRow [role="checkbox"]') as HTMLElement).click();});
+		contentHeight=700;await resize();
+		assert(grid().style.height==='500px','Expanded/long results must retain the available scrolling limit.');
+		contentHeight=140;await resize();
+		assert(grid().style.height==='177px' && selected.join()==='compact-parent','Collapsing content must reclaim space without clearing selection.');
+		await act(async()=>{render({hasNextPage:true});});
+		assert(grid().style.height==='500px','Unloaded pages must retain the scrolling viewport instead of exposing the sentinel at every shortened page.');
+		await act(async()=>{render({hasNextPage:false,itemsLoading:true});});
+		assert(grid().style.height==='500px','Loading keeps its existing viewport.');
+		await act(async()=>{render({itemsLoading:false});});
+		assert(grid().style.height==='177px','Complete refreshed results must compact again.');
+		await act(async()=>{render({},false);});
+		assert(grid().style.height==='500px','Controls without FitToRows must keep full-height sizing.');
+		assert(queries===0 && writes===0,'Content measurement must never query, sort, filter or save records.');
+	} finally {
+		ReactDOM.unmountComponentAtNode(container);
+		assert(observers.every(observer=>observer.disconnected),'All compact sizing observers must disconnect.');
+		Object.defineProperty(globalThis,'ResizeObserver',{value:priorObserver,configurable:true,writable:true});
+	}
+}
+
 async function testResponsiveSizing(): Promise<void> {
 	const { ResponsiveGrid, resolveGridHeight } = require('../CMModelDrivenGrid/ResponsiveGrid') as typeof import('../CMModelDrivenGrid/ResponsiveGrid');
 	assert(resolveGridHeight(850, 520) === 850, 'A definite Power Apps allocation must win over the embedded pixel height.');
@@ -668,6 +723,7 @@ async function run(): Promise<void> {
 	await (require('./local-blindtype-setup-ui-probes') as typeof import('./local-blindtype-setup-ui-probes')).testDirectSetupSaves(container);
 	console.log('Checking native/full-tab responsive sizing...');
 	await testResponsiveSizing();
+	await testCompactSizing();
 	console.log('Checking column-header open/close toggles...');
 	await testColumnHeaderToggle();
 	console.log('Checking grouping, complete totals and compact-list parity...');
@@ -1078,7 +1134,7 @@ async function testLookupInteractionSafety(): Promise<void> {
 
 // The release gates now run in the normal suite; retain the focused entry point.
 const runReviewGates = () => (require('./local-pre-sandbox-review-probes') as typeof import('./local-pre-sandbox-review-probes')).runPreSandboxReviewProbes({container, resources, renderGrid, updateGrid, unmount: () => { ReactDOM.unmountComponentAtNode(container); }});
-const runSelectedSuite = process.argv.includes('--blindtype-setup') ? () => (require('./local-blindtype-setup-ui-probes') as typeof import('./local-blindtype-setup-ui-probes')).testDirectSetupSaves(container) : process.argv.includes('--layout') ? testResponsiveSizing : process.argv.includes('--pre-sandbox-review')
+const runSelectedSuite = process.argv.includes('--blindtype-setup') ? () => (require('./local-blindtype-setup-ui-probes') as typeof import('./local-blindtype-setup-ui-probes')).testDirectSetupSaves(container) : process.argv.includes('--layout') ? async()=>{await testResponsiveSizing();await testCompactSizing();} : process.argv.includes('--pre-sandbox-review')
 	? runReviewGates
 	: run;
 runSelectedSuite()

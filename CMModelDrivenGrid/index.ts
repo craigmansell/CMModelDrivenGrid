@@ -1561,6 +1561,8 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 		};
 
 		const rawAllocatedWidth = this.context.mode.allocatedWidth as unknown;
+		const fitToRows = this.context.parameters.FitToRows?.raw === true;
+		this.container.style.height = fitToRows ? "auto" : "100%";
 		const rawAllocatedHeight = this.context.mode.allocatedHeight as unknown;
 		let allocatedWidth = parseAllocatedSize(rawAllocatedWidth);
 		let allocatedHeight = parseAllocatedSize(rawAllocatedHeight);
@@ -1614,6 +1616,7 @@ export class CMModelDrivenGrid implements ComponentFramework.StandardControl<IIn
 				width: allocatedWidth,
 				height: allocatedHeight,
 				fixedHeight: this.context.parameters.SubGridHeight.raw ?? undefined,
+				fitToRows,
 				columns: (native ? dataset.columns.filter(column => column.name !== native.parentField) : dataset.columns).map(column => ({...column,
 					isReadOnly: (column as typeof column & {isReadOnly?: boolean}).isReadOnly === true ||
 						this.columnEditabilityEntity !== dataset.getTargetEntityType() || this.columnEditability[column.name.toLowerCase()] !== true})),
